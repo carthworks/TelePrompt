@@ -1,0 +1,28 @@
+Welcome to MyTeleprompter!
+
+This is a professional teleprompter application designed to help you deliver flawless speeches, presentations, and videos.
+
+Key Features:
+• Smooth scrolling with adjustable speed
+• Multiple theme options (Dark, Light, Sepia, Blue)
+• Customizable font sizes
+• Fullscreen mode for distraction-free reading
+• Keyboard shortcuts for easy control
+• Bookmark support to mark important sections
+• Wake lock to keep your screen on
+
+How to Use:
+1. Upload your speech text file or paste your content
+2. Adjust the speed and font size to your preference
+3. Press Play or use the spacebar to start scrolling
+4. Use arrow keys to control speed during playback
+5. Press F for fullscreen mode
+
+Perfect for:
+✓ Public speakers and presenters
+✓ Video content creators
+✓ Educators and trainers
+✓ Business professionals
+✓ Anyone who needs to deliver scripted content
+
+Start using MyTeleprompter today and deliver your best performance every time!
