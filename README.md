@@ -2,40 +2,55 @@
 
 A professional, feature-rich teleprompter application built with Next.js, React, and TypeScript. Perfect for speakers, presenters, video creators, and anyone who needs to deliver scripted content flawlessly.
 
-![MyTeleprompter](https://img.shields.io/badge/Next.js-16.1.1-black?style=for-the-badge&logo=next.js)
+![Next.js](https://img.shields.io/badge/Next.js-16.1.1-black?style=for-the-badge&logo=next.js)
 ![React](https://img.shields.io/badge/React-19.2.3-blue?style=for-the-badge&logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?style=for-the-badge&logo=typescript)
 ![TailwindCSS](https://img.shields.io/badge/Tailwind-3.4-38bdf8?style=for-the-badge&logo=tailwind-css)
 
 ## ✨ Features
 
-### 🎯 Core Functionality
-- **Smooth Auto-Scrolling** - Adjustable speed control (1-100 WPM)
-- **Multiple Themes** - Dark, Light, Sepia, and Blue themes
+### 🎯 Core Teleprompter Features
+- **Auto-Scrolling** - Smooth, adjustable speed control (5-100 units)
+- **Default Content** - Loads speech-content.txt automatically on start
+- **Multiple Input Methods** - Upload .txt files or paste text directly
+- **Progress Tracking** - Real-time progress bar, WPM counter, word count
+- **Theme Options** - Dark, Light, Sepia, and Blue themes
+- **Font Customization** - Adjustable font sizes (12px - 72px)
 - **Fullscreen Mode** - Distraction-free reading experience
-- **Font Customization** - Adjustable font sizes (16px - 48px)
-- **Progress Tracking** - Real-time WPM, word count, and time estimates
+- **Mirror Mode** - Flip text horizontally for teleprompter mirrors
+- **Wake Lock** - Keeps screen on during presentations
 
-### 🎨 User Interface
-- **Modern Design** - Beautiful gradient backgrounds and animations
-- **Responsive Layout** - Works on desktop, tablet, and mobile
-- **Visual Guide Line** - Colored horizontal line to track reading position
-- **Bookmark Support** - Mark important sections in your script
-- **Theme Switcher** - Quick theme changes with visual preview
+### 📚 Script Library Management
+- **Save Scripts** - Save unlimited scripts with custom titles
+- **Folder Organization** - Create and manage folders/categories
+- **Search Functionality** - Find scripts by title or content
+- **Filter by Folder** - Organize and filter scripts
+- **Export Scripts** - Download scripts as .txt files
+- **Script Metadata** - Track creation and update timestamps
+- **Local Storage** - All data stored locally for privacy
+
+### 🎮 Integrated Controls
+- **Home Button** - Return to landing page from teleprompter
+- **Upload Button** - Upload new content while in teleprompter
+- **Save Button** - Save current script to library
+- **All controls integrated** - Seamlessly built into control panel
 
 ### ⌨️ Keyboard Shortcuts
 - **Space** - Play/Pause
 - **R** - Reset to beginning
 - **F** - Toggle fullscreen
+- **M** - Toggle mirror mode
+- **C** - Hide/Show controls
+- **S** - Save current position
 - **↑/↓** - Adjust scrolling speed
-- **+/-** - Adjust font size
 - **1-4** - Switch themes (1=Dark, 2=Light, 3=Sepia, 4=Blue)
 
 ### 🔒 Privacy & Security
 - **Local Processing** - All content stays on your device
 - **No Cloud Uploads** - Complete privacy for sensitive content
-- **Session Storage** - Temporary authentication for secure access
+- **LocalStorage Only** - Data persists locally
 - **No Tracking** - Zero analytics or data collection
+- **No Server Required** - Fully client-side application
 
 ## 🚀 Getting Started
 
@@ -73,50 +88,77 @@ npm start
 
 ## 📖 How to Use
 
-### Method 1: Upload a Text File
-1. Click on the upload area on the home page
-2. Select a `.txt` file containing your speech
-3. The teleprompter will launch automatically
+### Getting Started
 
-### Method 2: Paste Your Text
-1. Paste your speech content into the text area
-2. Click "Start Teleprompter"
-3. Adjust settings as needed
+1. **Landing Page** - Default speech content loads automatically
+2. **Three Ways to Start:**
+   - Click "Start Now" with default content
+   - Upload a .txt file
+   - Paste your own text
+   - Load a saved script from library
 
-### Method 3: Try the Demo
-1. Click "Try Demo" on the home page
-2. Experience the teleprompter with sample content
-3. Familiarize yourself with all features
+### Using the Teleprompter
 
-## 🎛️ Controls & Settings
+#### Control Panel (Top Bar)
+- **Play/Pause** - Start/stop scrolling
+- **Reset** - Return to beginning
+- **Bookmark** - Save current position
+- **Home** - Return to landing page
+- **Upload** - Load new content
+- **Save** - Save to script library
+- **Speed Slider** - Adjust scrolling speed
+- **Font Slider** - Change text size
+- **Theme Selector** - Choose visual theme
+- **Mirror** - Flip text horizontally
+- **Fullscreen** - Enter/exit fullscreen
+- **Hide Controls** - Minimize control panel
 
-### Speed Control
-- Use the slider or arrow keys to adjust scrolling speed
-- Range: 1-100 words per minute
-- Real-time speed adjustment while scrolling
+#### Progress Bar (Bottom)
+- Shows completion percentage
+- Real-time WPM (words per minute)
+- Words read vs total words
+- Estimated total time
 
-### Font Size
-- Adjust from 16px to 48px
-- Use +/- keys for quick changes
-- Perfect for different viewing distances
+### Script Library
 
-### Themes
+#### Saving Scripts
+1. Click **Save** button in teleprompter
+2. Enter a title for your script
+3. Select or create a folder
+4. Click Save
+
+#### Managing Scripts
+1. Click **Script Library** on landing page
+2. **Search** - Find scripts by title or content
+3. **Filter** - Select folder to filter
+4. **Load** - Open script in teleprompter
+5. **Export** - Download as .txt file
+6. **Delete** - Remove unwanted scripts
+
+#### Organizing with Folders
+- Create folders when saving scripts
+- Filter library by folder
+- Keep scripts organized by topic/event
+
+## 🎨 Themes
+
+### Available Themes
 - **Dark** - Black background, white text, green guide line
 - **Light** - Light gray background, dark text, blue guide line
 - **Sepia** - Warm beige background, brown text, orange guide line
 - **Blue** - Deep blue background, light text, cyan guide line
 
-### Fullscreen Mode
-- Press 'F' or click the fullscreen button
-- Removes all distractions
-- Perfect for presentations and recordings
+### Switching Themes
+- Use theme selector in control panel
+- Or press 1-4 keys for quick switching
+- Theme preference is saved automatically
 
 ## 🏗️ Project Structure
 
 ```
 mytelepromptor/
 ├── app/
-│   ├── page.tsx              # Landing page with upload functionality
+│   ├── page.tsx              # Landing page with script library
 │   ├── speech/
 │   │   └── page.tsx          # Password-protected speech page
 │   ├── layout.tsx            # Root layout
@@ -138,30 +180,7 @@ mytelepromptor/
 - **Icons**: Lucide React
 - **Build Tool**: Turbopack (Next.js built-in)
 
-## 🎨 Customization
-
-### Changing the Default Password
-Edit `app/speech/page.tsx`:
-```typescript
-const CORRECT_PASSWORD = "your-password-here";
-```
-
-### Adding Custom Themes
-Edit `components/Teleprompter.tsx`:
-```typescript
-const themes = {
-  yourtheme: { 
-    bg: "bg-your-color", 
-    text: "text-your-color", 
-    line: "bg-your-color" 
-  },
-};
-```
-
-### Modifying Default Content
-Replace `public/speech-content.txt` with your default speech content.
-
-## 📱 Use Cases
+## 🎯 Use Cases
 
 - **Public Speaking** - Deliver speeches with confidence
 - **Video Production** - Create professional video content
@@ -169,6 +188,31 @@ Replace `public/speech-content.txt` with your default speech content.
 - **Live Streaming** - Scripted content for streamers
 - **Podcasting** - Stay on track with your podcast script
 - **Training** - Educational and training sessions
+- **Interviews** - Prepare and deliver interview responses
+- **Announcements** - Corporate or event announcements
+
+## 💡 Tips & Best Practices
+
+### For Best Results
+1. **Prepare Your Script** - Format with clear sections
+2. **Practice First** - Use countdown timer to prepare
+3. **Adjust Speed** - Find comfortable reading pace
+4. **Use Bookmarks** - Mark important sections
+5. **Save Position** - Resume where you left off
+6. **Choose Theme** - Select based on lighting conditions
+7. **Organize Scripts** - Use folders for different events
+
+### Script Formatting
+- Use clear paragraphs for natural pauses
+- Add section markers with `[Section Name]` for auto-pause
+- Keep sentences concise for easier reading
+- Use line breaks for emphasis
+
+### Performance Tips
+- Close unnecessary browser tabs
+- Use fullscreen mode for presentations
+- Enable wake lock to prevent screen sleep
+- Save position frequently for long scripts
 
 ## 🔧 Development
 
@@ -181,6 +225,38 @@ Replace `public/speech-content.txt` with your default speech content.
 
 ### Environment Variables
 No environment variables required! Everything runs locally.
+
+### Customization
+
+#### Changing Default Content
+Replace `public/speech-content.txt` with your default speech.
+
+#### Adding Custom Themes
+Edit `components/Teleprompter.tsx`:
+```typescript
+const themes = {
+  yourtheme: { 
+    bg: "bg-your-color", 
+    text: "text-your-color", 
+    line: "bg-your-color" 
+  },
+};
+```
+
+#### Modifying Default Settings
+Edit default values in `components/Teleprompter.tsx`:
+```typescript
+defaultSpeed = 30,      // Adjust default speed
+defaultFontSize = 24,   // Adjust default font size
+```
+
+## 📱 Browser Compatibility
+
+- ✅ Chrome/Edge (Recommended)
+- ✅ Firefox
+- ✅ Safari
+- ✅ Opera
+- ⚠️ Wake Lock API may not work in all browsers
 
 ## 🤝 Contributing
 
@@ -209,8 +285,54 @@ If you encounter any issues or have questions:
 - Check the documentation
 - Review existing issues for solutions
 
+## 🎉 Features Roadmap
+
+### Planned Features
+- [ ] Cloud sync (optional)
+- [ ] Collaboration features
+- [ ] Voice control
+- [ ] Video recording integration
+- [ ] AI script analysis
+- [ ] Mobile app (iOS/Android)
+- [ ] Remote control via phone
+- [ ] Multi-language support
+
+## 📊 Stats
+
+- **Lines of Code**: ~1,500+
+- **Components**: 2 main components
+- **Themes**: 4 built-in themes
+- **Keyboard Shortcuts**: 10+
+- **Storage**: LocalStorage (unlimited scripts)
+
 ---
 
 **Made with ❤️ for speakers who demand excellence**
 
 🌟 If you find this project helpful, please consider giving it a star!
+
+## 🔥 Quick Start Guide
+
+### First Time Users
+
+1. **Open the app** → Default content loads automatically
+2. **Click "Start Now"** → Teleprompter launches
+3. **Press Space** → Start scrolling
+4. **Adjust speed** → Use slider or ↑/↓ keys
+5. **Save your work** → Click Save button
+6. **Organize** → Create folders in Script Library
+
+### Power Users
+
+- Use keyboard shortcuts for everything
+- Create folders for different events
+- Save positions to resume later
+- Export scripts for backup
+- Use mirror mode with physical teleprompter
+- Customize themes for different lighting
+
+---
+
+**Version**: 1.0.0  
+**Last Updated**: January 2026  
+**Status**: Production Ready ✅
