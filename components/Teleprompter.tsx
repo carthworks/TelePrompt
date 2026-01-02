@@ -61,6 +61,7 @@ export default function Teleprompter({
     const [wordsRead, setWordsRead] = useState(0);
     const [currentSection, setCurrentSection] = useState("");
     const [showSectionPause, setShowSectionPause] = useState(false);
+    const [showCompletion, setShowCompletion] = useState(false);
 
     const containerRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
@@ -125,8 +126,14 @@ export default function Teleprompter({
         if (contentRef.current) {
             const scrollPercentage = position / contentRef.current.scrollHeight;
             setWordsRead(Math.round(totalWords * scrollPercentage));
+
+            // Check for completion (reached end)
+            if (scrollPercentage >= 0.98 && isPlaying) {
+                setIsPlaying(false);
+                setShowCompletion(true);
+            }
         }
-    }, [position, totalWords]);
+    }, [position, totalWords, isPlaying]);
 
     // Section detection and auto-pause
     useEffect(() => {
@@ -222,6 +229,7 @@ export default function Teleprompter({
         setWordsRead(0);
         setCurrentSection("");
         setShowSectionPause(false);
+        setShowCompletion(false);
         localStorage.removeItem("teleprompter_position");
     };
 
@@ -302,6 +310,92 @@ export default function Teleprompter({
                             <span>Continue to Next Section</span>
                             <ArrowRight className="w-5 h-5" />
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Completion Celebration Overlay */}
+            {showCompletion && (
+                <div className="fixed inset-0 bg-gradient-to-br from-blue-950 via-purple-950 to-teal-950 bg-opacity-95 flex items-center justify-center z-[100] p-4">
+                    <div className="bg-gray-900 border-2 border-green-500 rounded-3xl p-8 md:p-12 max-w-2xl text-center animate-scaleIn">
+                        {/* Success Icon */}
+                        <div className="mb-6">
+                            <div className="w-24 h-24 mx-auto bg-gradient-to-br from-green-500 to-teal-500 rounded-full flex items-center justify-center animate-pulse">
+                                <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                        </div>
+
+                        {/* Congratulations Message */}
+                        <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-green-400 via-teal-400 to-blue-400 bg-clip-text text-transparent">
+                            🎉 Excellent Work!
+                        </h2>
+                        <p className="text-xl text-gray-300 mb-8">
+                            You've completed your speech!
+                        </p>
+
+                        {/* Statistics */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                            <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
+                                <div className="text-3xl font-bold text-green-400 mb-1">{totalWords}</div>
+                                <div className="text-sm text-gray-400">Total Words</div>
+                            </div>
+                            <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
+                                <div className="text-3xl font-bold text-blue-400 mb-1">{formatTime(elapsedTime)}</div>
+                                <div className="text-sm text-gray-400">Time Taken</div>
+                            </div>
+                            <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
+                                <div className="text-3xl font-bold text-purple-400 mb-1">{wpm}</div>
+                                <div className="text-sm text-gray-400">Avg WPM</div>
+                            </div>
+                            <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-4">
+                                <div className="text-3xl font-bold text-teal-400 mb-1">100%</div>
+                                <div className="text-sm text-gray-400">Completed</div>
+                            </div>
+                        </div>
+
+                        {/* Performance Message */}
+                        <div className="mb-8 p-4 bg-green-900/20 border border-green-700 rounded-lg">
+                            <p className="text-green-300">
+                                {wpm >= 150 ? "⚡ Outstanding pace! You're a natural speaker." :
+                                    wpm >= 120 ? "🎯 Great job! Perfect speaking pace." :
+                                        wpm >= 90 ? "👍 Well done! Nice and steady." :
+                                            "🌟 Excellent! Taking your time shows confidence."}
+                            </p>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex flex-col sm:flex-row gap-4">
+                            <button
+                                onClick={resetPosition}
+                                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:shadow-2xl hover:scale-105 transition-all duration-300 flex items-center justify-center space-x-2"
+                            >
+                                <RotateCcw className="w-5 h-5" />
+                                <span>Practice Again</span>
+                            </button>
+                            {onSave && (
+                                <button
+                                    onClick={() => {
+                                        setShowCompletion(false);
+                                        onSave();
+                                    }}
+                                    className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-teal-600 text-white rounded-lg font-semibold hover:shadow-2xl hover:scale-105 transition-all duration-300 flex items-center justify-center space-x-2"
+                                >
+                                    <Save className="w-5 h-5" />
+                                    <span>Save Script</span>
+                                </button>
+                            )}
+                            {onHome && (
+                                <button
+                                    onClick={onHome}
+                                    className="flex-1 px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-semibold transition-all duration-300 flex items-center justify-center space-x-2"
+                                >
+                                    <Home className="w-5 h-5" />
+                                    <span>Go Home</span>
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
