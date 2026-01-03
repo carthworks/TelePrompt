@@ -340,7 +340,7 @@ export default function Home() {
         </header>
 
         {/* Hero Section */}
-        <section className="container mx-auto px-6 py-20">
+        <section className="container mx-auto px-6 py-10">
           <div className="max-w-6xl mx-auto">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               {/* Left Column - Text Content */}
@@ -493,7 +493,7 @@ export default function Home() {
         </section>
 
         {/* Features Section */}
-        <section className="container mx-auto px-6 py-20">
+        <section className="container mx-auto px-6 py-10">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-16">
               <h3 className="text-4xl font-bold text-white mb-4">Powerful Features</h3>

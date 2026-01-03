@@ -690,6 +690,19 @@ export default function Teleprompter({
             {/* Reading Line */}
             <div className={`fixed top-1/2 left-0 right-0 h-1 ${currentTheme.line} opacity-70 z-40 pointer-events-none`} />
 
+            {/* Dimming Overlay for Read Text (above the green line) */}
+            <div
+                className="fixed top-0 left-0 right-0 z-30 pointer-events-none"
+                style={{
+                    height: '50%',
+                    background: `linear-gradient(to bottom, ${theme === 'dark' ? 'rgba(0, 0, 0, 0.6)' :
+                            theme === 'light' ? 'rgba(255, 255, 255, 0.6)' :
+                                theme === 'sepia' ? 'rgba(244, 236, 216, 0.6)' :
+                                    'rgba(23, 37, 84, 0.6)'
+                        } 0%, transparent 100%)`
+                }}
+            />
+
             {/* Speech Content */}
             <div className={`${showControls ? "pt-24 md:pt-20" : "pt-12"} pb-24 min-h-screen`}>
                 <div
