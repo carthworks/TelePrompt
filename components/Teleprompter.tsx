@@ -75,13 +75,9 @@ export default function Teleprompter({
         ? Math.min(100, (position / (contentRef.current.scrollHeight - window.innerHeight)) * 100)
         : 0;
 
-    // Load saved position from localStorage
+    // Load saved theme from localStorage (but not position - let user choose to resume)
     useEffect(() => {
-        const savedPosition = localStorage.getItem("teleprompter_position");
         const savedTheme = localStorage.getItem("teleprompter_theme") as Theme;
-        if (savedPosition) {
-            setPosition(Number(savedPosition));
-        }
         if (savedTheme && themes[savedTheme]) {
             setTheme(savedTheme);
         }
@@ -756,7 +752,12 @@ export default function Teleprompter({
                         </div>
                         <div className="flex flex-col sm:flex-row gap-3 mt-6 md:mt-8">
                             <button
-                                onClick={() => setIsPlaying(true)}
+                                onClick={() => {
+                                    setPosition(0);
+                                    setElapsedTime(0);
+                                    setWordsRead(0);
+                                    setIsPlaying(true);
+                                }}
                                 className="flex-1 px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-blue-600 to-teal-600 text-white rounded-lg font-semibold hover:shadow-2xl hover:scale-105 transition-all duration-300 flex items-center justify-center space-x-2"
                             >
                                 <Play className="w-5 h-5 md:w-6 md:h-6" />
