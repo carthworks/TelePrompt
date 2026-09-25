@@ -17,17 +17,6 @@ export default function SpeechPage() {
     // Password for accessing the teleprompter (change this to your desired password)
     const CORRECT_PASSWORD = "investorpitch2026";
 
-    useEffect(() => {
-        // Check if already authenticated in session
-        const authenticated = sessionStorage.getItem("teleprompter_auth");
-        if (authenticated === "true") {
-            setIsAuthenticated(true);
-            loadDefaultContent();
-        } else {
-            setLoading(false);
-        }
-    }, []);
-
     const loadDefaultContent = () => {
         setLoading(true);
         fetch("/speech-content.txt")
@@ -42,6 +31,20 @@ export default function SpeechPage() {
                 setLoading(false);
             });
     };
+
+    useEffect(() => {
+        // Check if already authenticated in session
+        const timer = setTimeout(() => {
+            const authenticated = sessionStorage.getItem("teleprompter_auth");
+            if (authenticated === "true") {
+                setIsAuthenticated(true);
+                loadDefaultContent();
+            } else {
+                setLoading(false);
+            }
+        }, 0);
+        return () => clearTimeout(timer);
+    }, []);
 
     const handlePasswordSubmit = (e: React.FormEvent) => {
         e.preventDefault();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, ChangeEvent } from "react";
+import { useState, useEffect, useRef, useMemo, ChangeEvent } from "react";
 import {
     Play,
     Pause,
@@ -17,6 +17,12 @@ import {
     Home,
     Upload,
     Save,
+    Volume2,
+    VolumeX,
+    Megaphone,
+    Headphones,
+    Sparkles,
+    X,
 } from "lucide-react";
 
 interface TeleprompterProps {
@@ -37,6 +43,105 @@ const themes = {
     sepia: { bg: "bg-[#f4ecd8]", text: "text-[#5c4b37]", line: "bg-orange-500" },
     blue: { bg: "bg-blue-950", text: "text-blue-50", line: "bg-cyan-400" },
 };
+
+// Types for script sentences & speech coach guidance
+interface ScriptSentence {
+    id: number;
+    text: string;
+    paragraphIndex: number;
+    isSection: boolean;
+    sectionTitle?: string;
+    tip: string;
+}
+
+interface ScriptParagraph {
+    id: number;
+    sentences: ScriptSentence[];
+    rawText: string;
+}
+
+type AudioPreset = "loud_stage" | "natural_studio" | "energetic" | "steady_practice";
+
+function parseScriptContent(rawText: string): { paragraphs: ScriptParagraph[]; allSentences: ScriptSentence[] } {
+    if (!rawText || !rawText.trim()) {
+        return { paragraphs: [], allSentences: [] };
+    }
+
+    const rawParagraphs = rawText.split(/\n+/);
+    let globalId = 0;
+    const paragraphs: ScriptParagraph[] = [];
+    const allSentences: ScriptSentence[] = [];
+
+    rawParagraphs.forEach((para, pIdx) => {
+        const trimmed = para.trim();
+        if (!trimmed) return;
+
+        // Check if section marker like [Intro] or # Intro
+        if (/^\[[^\]]+\]$/.test(trimmed) || /^#+\s+.+$/.test(trimmed)) {
+            const sectionTitle = trimmed.replace(/^[#\s\[]+|[\]]+$/g, "");
+            const sentObj: ScriptSentence = {
+                id: globalId++,
+                text: trimmed,
+                paragraphIndex: pIdx,
+                isSection: true,
+                sectionTitle,
+                tip: "🎯 Section Transition: Breathe and set the stage",
+            };
+            paragraphs.push({
+                id: pIdx,
+                sentences: [sentObj],
+                rawText: trimmed,
+            });
+            allSentences.push(sentObj);
+            return;
+        }
+
+        // Split sentences on terminal punctuation (. ! ?) followed by space
+        const sentenceTexts = trimmed
+            .replace(/([.!?])\s+(?=[A-Z0-9"“'\[])/g, "$1|===|")
+            .split("|===|")
+            .map((s) => s.trim())
+            .filter(Boolean);
+
+        const paraSentences: ScriptSentence[] = [];
+
+        (sentenceTexts.length > 0 ? sentenceTexts : [trimmed]).forEach((st) => {
+            const sTrim = st.trim();
+            if (!sTrim) return;
+
+            let tip = "🗣️ Speak with confident, forward projection";
+            if (sTrim.endsWith("?")) {
+                tip = "↗️ Rising inflection: Engage listener with curiosity";
+            } else if (sTrim.endsWith("!")) {
+                tip = "⚡ High energy: Project with passion & emphasis";
+            } else if (sTrim.includes(",") || sTrim.includes(";")) {
+                tip = "⏸️ Micro-pause: Breathe at punctuation for rhythm";
+            } else if (sTrim.length > 110) {
+                tip = "🌊 Steady cadence: Don't rush; articulate each word";
+            }
+
+            const sentObj: ScriptSentence = {
+                id: globalId++,
+                text: sTrim,
+                paragraphIndex: pIdx,
+                isSection: false,
+                tip,
+            };
+            paraSentences.push(sentObj);
+            allSentences.push(sentObj);
+        });
+
+        if (paraSentences.length > 0) {
+            paragraphs.push({
+                id: pIdx,
+                sentences: paraSentences,
+                rawText: trimmed,
+            });
+        }
+    });
+
+    return { paragraphs, allSentences };
+}
 
 export default function Teleprompter({
     content,
@@ -63,9 +168,31 @@ export default function Teleprompter({
     const [showSectionPause, setShowSectionPause] = useState(false);
     const [showCompletion, setShowCompletion] = useState(false);
 
+    // Audio Speaker & Best Loud Audio Mode State
+    const [audioSpeakerEnabled, setAudioSpeakerEnabled] = useState(false);
+    const [loudAudioMode, setLoudAudioMode] = useState(true);
+    const [showAudioSettings, setShowAudioSettings] = useState(false);
+    const [audioSettingsTab, setAudioSettingsTab] = useState<"voice" | "coach">("voice");
+    const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+    const [selectedVoiceURI, setSelectedVoiceURI] = useState<string>("");
+    const [speechVolume, setSpeechVolume] = useState<number>(1.0);
+    const [speechRate, setSpeechRate] = useState<number>(1.0);
+    const [speechPitch, setSpeechPitch] = useState<number>(1.08);
+    const [autoScrollWithAudio, setAutoScrollWithAudio] = useState(true);
+    const [showVoiceTips, setShowVoiceTips] = useState(true);
+    const [currentSentenceIndex, setCurrentSentenceIndex] = useState<number>(0);
+    const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
+    const [audioTestPlaying, setAudioTestPlaying] = useState<boolean>(false);
+
+    const activeUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+    const speechTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
     const containerRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
     const wakeLockRef = useRef<any>(null);
+
+    // Parse script into structured sentences
+    const scriptData = useMemo(() => parseScriptContent(content), [content]);
 
     // Calculate metrics
     const totalWords = content.split(/\s+/).filter((w) => w.length > 0).length;
@@ -75,12 +202,176 @@ export default function Teleprompter({
         ? Math.min(100, (position / (contentRef.current.scrollHeight - window.innerHeight)) * 100)
         : 0;
 
-    // Load saved theme from localStorage (but not position - let user choose to resume)
+    // Helper: Select best loud & clear voice
+    const selectBestLoudVoice = (voiceList: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null => {
+        if (!voiceList || voiceList.length === 0) return null;
+
+        const priorityNames = [
+            "Microsoft Natural", "Microsoft Jenny", "Microsoft Guy", "Microsoft Aria",
+            "Google US English", "Google UK English", "Samantha", "Daniel",
+            "Alex", "Karen", "Victoria", "David", "Zira"
+        ];
+
+        for (const name of priorityNames) {
+            const match = voiceList.find((v) => v.name.toLowerCase().includes(name.toLowerCase()));
+            if (match) return match;
+        }
+
+        const enVoice = voiceList.find((v) => v.lang.startsWith("en"));
+        if (enVoice) return enVoice;
+
+        return voiceList.find((v) => v.default) || voiceList[0];
+    };
+
+    // Helper: Web Audio stage acoustic chime
+    const playAudioChime = (loud: boolean = true) => {
+        try {
+            if (typeof window === "undefined") return;
+            const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+            if (!AudioCtx) return;
+            const ctx = new AudioCtx();
+            const now = ctx.currentTime;
+
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.type = "sine";
+            // Two-tone chime: D5 (587.33Hz) up to A5 (880Hz)
+            osc.frequency.setValueAtTime(587.33, now);
+            osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
+
+            const volume = loud ? 0.35 : 0.15;
+            gain.gain.setValueAtTime(0.001, now);
+            gain.gain.linearRampToValueAtTime(volume, now + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.start(now);
+            osc.stop(now + 0.5);
+        } catch (e) {
+            console.warn("Audio chime error:", e);
+        }
+    };
+
+    // Helper: Scroll to specific sentence
+    const scrollToSentence = (sentenceId: number) => {
+        const el = document.getElementById(`sentence-${sentenceId}`);
+        if (el && contentRef.current) {
+            const firstEl = document.getElementById("sentence-0");
+            const baseOffset = firstEl ? firstEl.offsetTop : 0;
+            const targetOffset = el.offsetTop - baseOffset;
+            setPosition(Math.max(0, targetOffset));
+        }
+    };
+
+    // Helper: Test Audio Speaker
+    const testAudioSpeaker = () => {
+        if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+            alert("Speech synthesis is not supported on this browser.");
+            return;
+        }
+        setAudioTestPlaying(true);
+        playAudioChime(loudAudioMode);
+
+        setTimeout(() => {
+            window.speechSynthesis.cancel();
+            const testText = loudAudioMode
+                ? "Testing Best Loud Audio Mode! This is maximum volume projection. Your speech will be clear and powerful."
+                : "Testing Audio Speaker. This is how your voice guide will sound.";
+            const utterance = new SpeechSynthesisUtterance(testText);
+            const currentVoice = voices.find((v) => v.voiceURI === selectedVoiceURI);
+            if (currentVoice) utterance.voice = currentVoice;
+            utterance.volume = loudAudioMode ? 1.0 : speechVolume;
+            utterance.pitch = speechPitch;
+            utterance.rate = speechRate;
+            utterance.onend = () => setAudioTestPlaying(false);
+            utterance.onerror = () => setAudioTestPlaying(false);
+            window.speechSynthesis.speak(utterance);
+        }, 350);
+    };
+
+    // Helper: Apply Preset
+    const applyAudioPreset = (preset: AudioPreset) => {
+        if (preset === "loud_stage") {
+            setLoudAudioMode(true);
+            setSpeechVolume(1.0);
+            setSpeechPitch(1.08);
+            setSpeechRate(0.95);
+            playAudioChime(true);
+        } else if (preset === "natural_studio") {
+            setLoudAudioMode(false);
+            setSpeechVolume(0.95);
+            setSpeechPitch(1.0);
+            setSpeechRate(1.0);
+        } else if (preset === "energetic") {
+            setLoudAudioMode(true);
+            setSpeechVolume(1.0);
+            setSpeechPitch(1.05);
+            setSpeechRate(1.15);
+        } else if (preset === "steady_practice") {
+            setLoudAudioMode(false);
+            setSpeechVolume(0.9);
+            setSpeechPitch(0.95);
+            setSpeechRate(0.85);
+        }
+    };
+
+    // Load saved settings from localStorage on mount
     useEffect(() => {
         const savedTheme = localStorage.getItem("teleprompter_theme") as Theme;
         if (savedTheme && themes[savedTheme]) {
             setTheme(savedTheme);
         }
+
+        const savedSpeaker = localStorage.getItem("teleprompter_audio_speaker");
+        if (savedSpeaker !== null) {
+            setAudioSpeakerEnabled(savedSpeaker === "true");
+        }
+
+        const savedLoud = localStorage.getItem("teleprompter_loud_mode");
+        if (savedLoud !== null) {
+            setLoudAudioMode(savedLoud === "true");
+        }
+
+        const savedVoice = localStorage.getItem("teleprompter_voice_uri");
+        if (savedVoice) {
+            setSelectedVoiceURI(savedVoice);
+        }
+
+        const savedRate = localStorage.getItem("teleprompter_speech_rate");
+        if (savedRate) {
+            setSpeechRate(parseFloat(savedRate));
+        }
+    }, []);
+
+    // Load voices
+    useEffect(() => {
+        if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+
+        const updateVoices = () => {
+            const availableVoices = window.speechSynthesis.getVoices();
+            if (availableVoices && availableVoices.length > 0) {
+                setVoices(availableVoices);
+                setSelectedVoiceURI((prev) => {
+                    if (prev && availableVoices.some((v) => v.voiceURI === prev)) {
+                        return prev;
+                    }
+                    const best = selectBestLoudVoice(availableVoices);
+                    return best ? best.voiceURI : availableVoices[0].voiceURI;
+                });
+            }
+        };
+
+        updateVoices();
+        window.speechSynthesis.onvoiceschanged = updateVoices;
+
+        return () => {
+            if (typeof window !== "undefined" && "speechSynthesis" in window) {
+                window.speechSynthesis.onvoiceschanged = null;
+            }
+        };
     }, []);
 
     // Save position to localStorage
@@ -95,16 +386,127 @@ export default function Teleprompter({
         localStorage.setItem("teleprompter_theme", theme);
     }, [theme]);
 
-    // Auto-scroll logic
+    // Auto-scroll logic (pauses continuous scroll when audio speaker auto-scroll is driving)
     useEffect(() => {
         let interval: NodeJS.Timeout;
-        if (isPlaying) {
+        if (isPlaying && (!audioSpeakerEnabled || !autoScrollWithAudio)) {
             interval = setInterval(() => {
                 setPosition((prev) => prev + 1);
             }, 1000 / speed);
         }
         return () => clearInterval(interval);
-    }, [isPlaying, speed]);
+    }, [isPlaying, speed, audioSpeakerEnabled, autoScrollWithAudio]);
+
+    // Speech Synthesis Effect: Speaks sentences sequentially when playing
+    useEffect(() => {
+        if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+
+        if (!isPlaying || !audioSpeakerEnabled) {
+            window.speechSynthesis.cancel();
+            setIsSpeaking(false);
+            if (speechTimeoutRef.current) {
+                clearTimeout(speechTimeoutRef.current);
+                speechTimeoutRef.current = null;
+            }
+            return;
+        }
+
+        const allSentences = scriptData.allSentences;
+        if (allSentences.length === 0) return;
+
+        if (currentSentenceIndex >= allSentences.length) {
+            setIsPlaying(false);
+            setShowCompletion(true);
+            return;
+        }
+
+        const currentSentence = allSentences[currentSentenceIndex];
+        if (!currentSentence) return;
+
+        // Auto-scroll to sentence
+        if (autoScrollWithAudio) {
+            scrollToSentence(currentSentence.id);
+        }
+
+        // Section handling:
+        if (currentSentence.isSection) {
+            setCurrentSection(currentSentence.text);
+            if (currentSentenceIndex > 0) {
+                setIsPlaying(false);
+                setShowSectionPause(true);
+                return;
+            }
+        }
+
+        let cleanText = currentSentence.text.replace(/\[([^\]]+)\]/g, "").trim();
+        if (!cleanText) {
+            speechTimeoutRef.current = setTimeout(() => {
+                setCurrentSentenceIndex((prev) => prev + 1);
+            }, 500);
+            return;
+        }
+
+        window.speechSynthesis.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        activeUtteranceRef.current = utterance;
+
+        const currentVoice = voices.find((v) => v.voiceURI === selectedVoiceURI);
+        if (currentVoice) {
+            utterance.voice = currentVoice;
+        }
+
+        if (loudAudioMode) {
+            utterance.volume = 1.0;
+            utterance.pitch = speechPitch;
+            utterance.rate = speechRate;
+        } else {
+            utterance.volume = speechVolume;
+            utterance.pitch = speechPitch;
+            utterance.rate = speechRate;
+        }
+
+        utterance.onstart = () => {
+            setIsSpeaking(true);
+        };
+
+        utterance.onend = () => {
+            activeUtteranceRef.current = null;
+            setIsSpeaking(false);
+            speechTimeoutRef.current = setTimeout(() => {
+                setCurrentSentenceIndex((prev) => prev + 1);
+            }, 180);
+        };
+
+        utterance.onerror = (e) => {
+            activeUtteranceRef.current = null;
+            setIsSpeaking(false);
+            if (e.error !== "interrupted" && e.error !== "canceled") {
+                speechTimeoutRef.current = setTimeout(() => {
+                    setCurrentSentenceIndex((prev) => prev + 1);
+                }, 200);
+            }
+        };
+
+        window.speechSynthesis.speak(utterance);
+
+        return () => {
+            if (speechTimeoutRef.current) {
+                clearTimeout(speechTimeoutRef.current);
+            }
+        };
+    }, [
+        isPlaying,
+        audioSpeakerEnabled,
+        currentSentenceIndex,
+        selectedVoiceURI,
+        loudAudioMode,
+        speechPitch,
+        speechRate,
+        speechVolume,
+        autoScrollWithAudio,
+        scriptData,
+    ]);
 
     // Elapsed time tracker
     useEffect(() => {
@@ -117,19 +519,26 @@ export default function Teleprompter({
         return () => clearInterval(interval);
     }, [isPlaying]);
 
-    // Words read tracker (estimate based on position)
+    // Words read tracker (estimate based on position or speech)
     useEffect(() => {
         if (contentRef.current) {
             const scrollPercentage = position / contentRef.current.scrollHeight;
-            setWordsRead(Math.round(totalWords * scrollPercentage));
+            if (audioSpeakerEnabled && scriptData.allSentences.length > 0) {
+                const wordsSpoken = scriptData.allSentences
+                    .slice(0, currentSentenceIndex + 1)
+                    .reduce((acc, s) => acc + s.text.split(/\s+/).filter(Boolean).length, 0);
+                setWordsRead(Math.min(totalWords, wordsSpoken));
+            } else {
+                setWordsRead(Math.round(totalWords * scrollPercentage));
+            }
 
             // Check for completion (reached end)
-            if (scrollPercentage >= 0.98 && isPlaying) {
+            if (scrollPercentage >= 0.98 && isPlaying && !audioSpeakerEnabled) {
                 setIsPlaying(false);
                 setShowCompletion(true);
             }
         }
-    }, [position, totalWords, isPlaying]);
+    }, [position, totalWords, isPlaying, audioSpeakerEnabled, currentSentenceIndex, scriptData]);
 
     // Section detection and auto-pause
     useEffect(() => {
@@ -190,12 +599,28 @@ export default function Teleprompter({
             } else if (e.code === "KeyS") {
                 e.preventDefault();
                 savePosition();
+            } else if (e.code === "KeyA") {
+                e.preventDefault();
+                setAudioSpeakerEnabled((prev) => {
+                    const next = !prev;
+                    localStorage.setItem("teleprompter_audio_speaker", String(next));
+                    if (next && loudAudioMode) playAudioChime(true);
+                    return next;
+                });
+            } else if (e.code === "KeyL") {
+                e.preventDefault();
+                setLoudAudioMode((prev) => {
+                    const next = !prev;
+                    localStorage.setItem("teleprompter_loud_mode", String(next));
+                    if (next) playAudioChime(true);
+                    return next;
+                });
             }
         };
 
         window.addEventListener("keydown", handleKeyPress);
         return () => window.removeEventListener("keydown", handleKeyPress);
-    }, []);
+    }, [loudAudioMode]);
 
     // Wake Lock API
     useEffect(() => {
@@ -226,6 +651,11 @@ export default function Teleprompter({
         setCurrentSection("");
         setShowSectionPause(false);
         setShowCompletion(false);
+        setCurrentSentenceIndex(0);
+        setIsSpeaking(false);
+        if (typeof window !== "undefined" && "speechSynthesis" in window) {
+            window.speechSynthesis.cancel();
+        }
         localStorage.removeItem("teleprompter_position");
     };
 
@@ -433,6 +863,7 @@ export default function Teleprompter({
                 <div className="fixed top-0 left-0 right-0 bg-gray-900/95 backdrop-blur-sm border-b border-gray-700 p-3 md:p-4 z-50 transition-all duration-300">
                     <div className="container mx-auto">
                         {/* Mobile Layout */}
+                        {/* Mobile Layout */}
                         <div className="md:hidden space-y-3">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-2">
@@ -448,8 +879,49 @@ export default function Teleprompter({
                                     <button
                                         onClick={resetPosition}
                                         className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+                                        title="Reset"
                                     >
                                         <RotateCcw className="w-5 h-5" />
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            const next = !audioSpeakerEnabled;
+                                            setAudioSpeakerEnabled(next);
+                                            localStorage.setItem("teleprompter_audio_speaker", String(next));
+                                            if (next && loudAudioMode) playAudioChime(true);
+                                        }}
+                                        className={`p-2 rounded-lg transition-all ${
+                                            audioSpeakerEnabled
+                                                ? "bg-cyan-600 text-white shadow-md shadow-cyan-500/30 ring-2 ring-cyan-400"
+                                                : "bg-gray-700 text-gray-400"
+                                        }`}
+                                        title="Audio Speaker (A)"
+                                    >
+                                        {audioSpeakerEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            const next = !loudAudioMode;
+                                            setLoudAudioMode(next);
+                                            localStorage.setItem("teleprompter_loud_mode", String(next));
+                                            if (next) playAudioChime(true);
+                                        }}
+                                        className={`px-2 py-1.5 rounded text-xs font-bold transition-all flex items-center space-x-1 ${
+                                            loudAudioMode
+                                                ? "bg-gradient-to-r from-amber-500 to-orange-500 text-black font-extrabold"
+                                                : "bg-gray-800 text-gray-400 border border-gray-700"
+                                        }`}
+                                        title="Best Loud Audio Mode (L)"
+                                    >
+                                        <Megaphone className="w-3.5 h-3.5" />
+                                        <span>{loudAudioMode ? "LOUD" : "OFF"}</span>
+                                    </button>
+                                    <button
+                                        onClick={() => setShowAudioSettings(true)}
+                                        className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-cyan-300"
+                                        title="Audio Settings"
+                                    >
+                                        <Headphones className="w-5 h-5" />
                                     </button>
                                     <button
                                         onClick={savePosition}
@@ -465,26 +937,6 @@ export default function Teleprompter({
                                             title="Home"
                                         >
                                             <Home className="w-5 h-5" />
-                                        </button>
-                                    )}
-                                    {onUpload && (
-                                        <label className="p-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors cursor-pointer" title="Upload">
-                                            <Upload className="w-5 h-5" />
-                                            <input
-                                                type="file"
-                                                accept=".txt,text/plain"
-                                                onChange={onUpload}
-                                                className="hidden"
-                                            />
-                                        </label>
-                                    )}
-                                    {onSave && (
-                                        <button
-                                            onClick={onSave}
-                                            className="p-2 bg-yellow-600 hover:bg-yellow-700 rounded-lg transition-colors"
-                                            title="Save"
-                                        >
-                                            <Save className="w-5 h-5" />
                                         </button>
                                     )}
                                 </div>
@@ -534,7 +986,7 @@ export default function Teleprompter({
 
                         {/* Desktop Layout */}
                         <div className="hidden md:flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
+                            <div className="flex items-center space-x-2.5">
                                 <button
                                     onClick={() => {
                                         setIsPlaying(!isPlaying);
@@ -547,6 +999,7 @@ export default function Teleprompter({
                                 <button
                                     onClick={resetPosition}
                                     className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+                                    title="Reset (R)"
                                 >
                                     <RotateCcw className="w-6 h-6" />
                                 </button>
@@ -586,6 +1039,72 @@ export default function Teleprompter({
                                         <Save className="w-6 h-6" />
                                     </button>
                                 )}
+
+                                {/* Audio Speaker & Loud Mode Controls */}
+                                <div className="h-8 w-px bg-gray-700 mx-1" />
+
+                                <button
+                                    onClick={() => {
+                                        const next = !audioSpeakerEnabled;
+                                        setAudioSpeakerEnabled(next);
+                                        localStorage.setItem("teleprompter_audio_speaker", String(next));
+                                        if (next && loudAudioMode) playAudioChime(true);
+                                    }}
+                                    className={`px-3.5 py-2.5 rounded-lg transition-all flex items-center space-x-2 ${
+                                        audioSpeakerEnabled
+                                            ? "bg-cyan-600 hover:bg-cyan-500 text-white shadow-lg shadow-cyan-500/30 ring-2 ring-cyan-400"
+                                            : "bg-gray-800 hover:bg-gray-700 text-gray-400 border border-gray-700"
+                                    }`}
+                                    title="Audio Speaker / Voice Guide (A)"
+                                >
+                                    {audioSpeakerEnabled ? (
+                                        <Volume2 className="w-5 h-5 text-white" />
+                                    ) : (
+                                        <VolumeX className="w-5 h-5 text-gray-400" />
+                                    )}
+                                    <span className="text-sm font-semibold">
+                                        {audioSpeakerEnabled ? "Speaker ON" : "Speaker OFF"}
+                                    </span>
+                                    {audioSpeakerEnabled && isSpeaking && isPlaying && (
+                                        <span className="flex items-center space-x-0.5 ml-1">
+                                            <span className="w-1 h-3 bg-white animate-soundwave-1 rounded-full" />
+                                            <span className="w-1 h-4 bg-white animate-soundwave-2 rounded-full" />
+                                            <span className="w-1 h-2 bg-white animate-soundwave-3 rounded-full" />
+                                        </span>
+                                    )}
+                                </button>
+
+                                <button
+                                    onClick={() => {
+                                        const next = !loudAudioMode;
+                                        setLoudAudioMode(next);
+                                        localStorage.setItem("teleprompter_loud_mode", String(next));
+                                        if (next) playAudioChime(true);
+                                    }}
+                                    className={`px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center space-x-1.5 ${
+                                        loudAudioMode
+                                            ? "bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-black shadow-lg shadow-orange-500/30 ring-2 ring-amber-300"
+                                            : "bg-gray-800 hover:bg-gray-700 text-gray-400 border border-gray-700"
+                                    }`}
+                                    title="Best Loud Audio Mode (L)"
+                                >
+                                    <Megaphone className={`w-4 h-4 ${loudAudioMode ? "text-black" : "text-gray-400"}`} />
+                                    <span>{loudAudioMode ? "LOUD MODE" : "LOUD OFF"}</span>
+                                </button>
+
+                                <button
+                                    onClick={() => setShowAudioSettings(true)}
+                                    className="p-3 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-cyan-300 hover:text-white transition-colors relative"
+                                    title="Audio Speaker & Voice Settings"
+                                >
+                                    <Headphones className="w-5 h-5" />
+                                    {audioSpeakerEnabled && (
+                                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-cyan-400 rounded-full animate-ping" />
+                                    )}
+                                </button>
+
+                                <div className="h-8 w-px bg-gray-700 mx-1" />
+
                                 <div className="flex space-x-1">
                                     <button
                                         onClick={() => startCountdown(3)}
@@ -707,7 +1226,7 @@ export default function Teleprompter({
             <div className={`${showControls ? "pt-24 md:pt-20" : "pt-12"} pb-24 min-h-screen`}>
                 <div
                     ref={contentRef}
-                    className="container mx-auto px-4 md:px-8 max-w-4xl transition-transform duration-100"
+                    className="container mx-auto px-4 md:px-8 max-w-4xl transition-transform duration-300 ease-out"
                     style={{
                         transform: `translateY(${-position}px)`,
                         paddingTop: "50vh",
@@ -715,7 +1234,7 @@ export default function Teleprompter({
                     }}
                 >
                     <div
-                        className="leading-relaxed whitespace-pre-wrap select-none"
+                        className="leading-relaxed select-none space-y-6"
                         style={{
                             fontSize: `${fontSize}px`,
                             fontFamily: "system-ui, -apple-system, sans-serif",
@@ -723,10 +1242,96 @@ export default function Teleprompter({
                             textAlign: "left",
                         }}
                     >
-                        {content}
+                        {scriptData.paragraphs.length > 0 ? (
+                            scriptData.paragraphs.map((para) => (
+                                <p key={para.id} className="paragraph-block leading-relaxed">
+                                    {para.sentences.map((sentence) => {
+                                        const isCurrent = sentence.id === currentSentenceIndex;
+                                        const isSpeakingCurrent = isCurrent && isSpeaking && audioSpeakerEnabled;
+
+                                        if (sentence.isSection) {
+                                            return (
+                                                <span
+                                                    key={sentence.id}
+                                                    id={`sentence-${sentence.id}`}
+                                                    onClick={() => {
+                                                        setCurrentSentenceIndex(sentence.id);
+                                                        scrollToSentence(sentence.id);
+                                                    }}
+                                                    className={`block my-6 px-4 py-2.5 rounded-xl cursor-pointer transition-all duration-300 font-bold border ${
+                                                        isCurrent
+                                                            ? "bg-blue-600/30 border-blue-400 text-blue-300 shadow-lg shadow-blue-500/20 scale-[1.01]"
+                                                            : "bg-gray-800/40 border-gray-700/60 text-gray-400 hover:border-gray-500"
+                                                    }`}
+                                                >
+                                                    <span className="flex items-center space-x-2">
+                                                        <Bookmark className="w-5 h-5 text-blue-400 inline" />
+                                                        <span>{sentence.text}</span>
+                                                        {isSpeakingCurrent && (
+                                                            <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full font-normal ml-2">
+                                                                Section
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                </span>
+                                            );
+                                        }
+
+                                        return (
+                                            <span
+                                                key={sentence.id}
+                                                id={`sentence-${sentence.id}`}
+                                                onClick={() => {
+                                                    setCurrentSentenceIndex(sentence.id);
+                                                    scrollToSentence(sentence.id);
+                                                }}
+                                                title="Click to speak from this sentence"
+                                                className={`inline relative cursor-pointer transition-all duration-200 rounded px-1.5 py-0.5 mx-0.5 ${
+                                                    isCurrent && audioSpeakerEnabled
+                                                        ? "bg-cyan-500/25 text-white font-semibold shadow-md shadow-cyan-500/20 ring-2 ring-cyan-400/60 rounded-lg"
+                                                        : "hover:bg-white/10"
+                                                }`}
+                                            >
+                                                {isSpeakingCurrent && (
+                                                    <span className="inline-flex items-center space-x-0.5 mr-1.5 align-middle text-cyan-400">
+                                                        <span className="w-1.5 h-3 bg-cyan-400 animate-soundwave-1 rounded-full" />
+                                                        <span className="w-1.5 h-4 bg-teal-300 animate-soundwave-2 rounded-full" />
+                                                        <span className="w-1.5 h-2 bg-blue-400 animate-soundwave-3 rounded-full" />
+                                                    </span>
+                                                )}
+                                                {sentence.text}{" "}
+                                            </span>
+                                        );
+                                    })}
+                                </p>
+                            ))
+                        ) : (
+                            <div className="whitespace-pre-wrap">{content}</div>
+                        )}
                     </div>
                 </div>
             </div>
+
+            {/* Real-time Voice Coach Delivery Tip Bar */}
+            {audioSpeakerEnabled && showVoiceTips && isPlaying && (
+                <div className="fixed bottom-14 left-0 right-0 z-40 pointer-events-none flex justify-center px-4">
+                    <div className="bg-gray-900/95 backdrop-blur-md border border-cyan-500/40 shadow-2xl rounded-full px-5 py-2 flex items-center space-x-3 text-xs md:text-sm animate-fadeIn">
+                        <span className="flex items-center space-x-1.5 text-cyan-400 font-semibold">
+                            <Volume2 className="w-4 h-4 animate-pulse text-cyan-400" />
+                            <span>Voice Coach:</span>
+                        </span>
+                        <span className="text-gray-200 max-w-md truncate">
+                            {scriptData.allSentences[currentSentenceIndex]?.tip || "🗣️ Speak with confident, forward projection"}
+                        </span>
+                        {loudAudioMode && (
+                            <span className="bg-gradient-to-r from-amber-500 to-orange-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center space-x-1">
+                                <Megaphone className="w-3 h-3" />
+                                <span>Loud Mode</span>
+                            </span>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Keyboard Shortcuts */}
             {!isPlaying && position === 0 && (
@@ -735,6 +1340,8 @@ export default function Teleprompter({
                     <div className="space-y-1">
                         <div><kbd className="bg-gray-800 px-2 py-1 rounded">Space</kbd> Play/Pause</div>
                         <div><kbd className="bg-gray-800 px-2 py-1 rounded">↑/↓</kbd> Speed</div>
+                        <div><kbd className="bg-gray-800 px-2 py-1 rounded">A</kbd> Audio Speaker</div>
+                        <div><kbd className="bg-gray-800 px-2 py-1 rounded">L</kbd> Loud Audio Mode</div>
                         <div><kbd className="bg-gray-800 px-2 py-1 rounded">R</kbd> Reset</div>
                         <div><kbd className="bg-gray-800 px-2 py-1 rounded">S</kbd> Save Position</div>
                         <div><kbd className="bg-gray-800 px-2 py-1 rounded">F</kbd> Fullscreen</div>
@@ -747,42 +1354,438 @@ export default function Teleprompter({
             {/* Instructions Overlay */}
             {!isPlaying && position === 0 && (
                 <div className="fixed inset-0 bg-gray-950 bg-opacity-95 flex items-center justify-center z-50 p-4">
-                    <div className="bg-gray-900 border-2 border-gray-700 rounded-2xl p-6 md:p-12 max-w-2xl text-center">
-                        <h1 className="text-3xl md:text-4xl font-bold mb-6 bg-gradient-to-r from-blue-400 via-teal-400 to-blue-500 bg-clip-text text-transparent">
+                    <div className="bg-gray-900 border-2 border-gray-700 rounded-2xl p-6 md:p-10 max-w-2xl text-center space-y-6 max-h-[90vh] overflow-y-auto">
+                        <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-400 via-teal-400 to-blue-500 bg-clip-text text-transparent">
                             {title}
                         </h1>
-                        <div className="space-y-3 md:space-y-4 text-left text-base md:text-lg text-gray-200">
-                            <p>✅ <strong className="text-white">Progress Bar</strong> shows completion</p>
-                            <p>✅ <strong className="text-white">WPM Counter</strong> tracks speaking pace</p>
-                            <p>✅ <strong className="text-white">Auto-Pause</strong> at section markers</p>
-                            <p>✅ <strong className="text-white">Save Position</strong> to resume later</p>
-                            <p>✅ <strong className="text-white">Theme Selector</strong> for comfort</p>
+
+                        {/* Audio Speaker & Loud Audio Mode Card */}
+                        <div className="bg-gradient-to-r from-cyan-950/60 via-blue-950/60 to-purple-950/60 border-2 border-cyan-500/40 rounded-2xl p-5 text-left shadow-xl">
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center space-x-2.5">
+                                    <div className="w-10 h-10 bg-cyan-500/20 border border-cyan-500/40 rounded-xl flex items-center justify-center">
+                                        <Volume2 className="w-5 h-5 text-cyan-400" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-base font-bold text-white flex items-center space-x-2">
+                                            <span>Audio Speaker & Voice Guide</span>
+                                            {loudAudioMode && (
+                                                <span className="bg-gradient-to-r from-amber-500 to-orange-500 text-black text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase">
+                                                    Loud Audio Mode
+                                                </span>
+                                            )}
+                                        </h3>
+                                        <p className="text-xs text-gray-300">
+                                            Hear how to speak your script with real-time text-to-speech narration
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        const next = !audioSpeakerEnabled;
+                                        setAudioSpeakerEnabled(next);
+                                        localStorage.setItem("teleprompter_audio_speaker", String(next));
+                                        if (next && loudAudioMode) playAudioChime(true);
+                                    }}
+                                    className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all shadow-lg ${
+                                        audioSpeakerEnabled
+                                            ? "bg-cyan-500 text-black hover:bg-cyan-400"
+                                            : "bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-700"
+                                    }`}
+                                >
+                                    {audioSpeakerEnabled ? "ENABLED" : "ENABLE"}
+                                </button>
+                            </div>
+
+                            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-cyan-500/20 text-xs">
+                                <div className="flex items-center space-x-2">
+                                    <Megaphone className="w-4 h-4 text-amber-400" />
+                                    <span className="text-gray-300">Loud Mode:</span>
+                                    <button
+                                        onClick={() => {
+                                            const next = !loudAudioMode;
+                                            setLoudAudioMode(next);
+                                            localStorage.setItem("teleprompter_loud_mode", String(next));
+                                            if (next) playAudioChime(true);
+                                        }}
+                                        className={`font-bold transition-colors ${
+                                            loudAudioMode ? "text-amber-400 underline" : "text-gray-400"
+                                        }`}
+                                    >
+                                        {loudAudioMode ? "100% MAX BOOST (ON)" : "STANDARD (OFF)"}
+                                    </button>
+                                </div>
+                                <button
+                                    onClick={testAudioSpeaker}
+                                    disabled={audioTestPlaying}
+                                    className="px-3 py-1 bg-cyan-600/30 hover:bg-cyan-600/50 border border-cyan-500/40 text-cyan-300 rounded-lg font-semibold flex items-center space-x-1.5 transition-colors"
+                                >
+                                    <span>{audioTestPlaying ? "Testing Voice..." : "🔊 Test Loud Speaker"}</span>
+                                </button>
+                            </div>
                         </div>
-                        <div className="mt-6 md:mt-8 p-4 bg-blue-900/40 border border-blue-700 rounded-lg">
-                            <p className="text-sm text-blue-200">
-                                💡 <strong>New Features:</strong> Progress tracking, WPM counter, section auto-pause, save/resume, and theme selection!
-                            </p>
+
+                        <div className="space-y-2.5 text-left text-sm md:text-base text-gray-200">
+                            <p>✅ <strong className="text-white">Audio Speaker:</strong> Hear pronunciation & pacing as it scrolls</p>
+                            <p>✅ <strong className="text-white">Best Loud Audio Mode:</strong> 100% volume boost for clear projection</p>
+                            <p>✅ <strong className="text-white">Interactive Practice:</strong> Click any line to hear how to speak it</p>
+                            <p>✅ <strong className="text-white">WPM Pace Counter & Auto-Pause:</strong> Delivers confident pacing</p>
                         </div>
-                        <div className="flex flex-col sm:flex-row gap-3 mt-6 md:mt-8">
+
+                        <div className="flex flex-col sm:flex-row gap-3 pt-2">
                             <button
                                 onClick={() => {
                                     setPosition(0);
                                     setElapsedTime(0);
                                     setWordsRead(0);
+                                    setCurrentSentenceIndex(0);
                                     setIsPlaying(true);
+                                    if (audioSpeakerEnabled && loudAudioMode) playAudioChime(true);
                                 }}
-                                className="flex-1 px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-blue-600 to-teal-600 text-white rounded-lg font-semibold hover:shadow-2xl hover:scale-105 transition-all duration-300 flex items-center justify-center space-x-2"
+                                className="flex-1 px-6 md:px-8 py-3.5 bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 text-white rounded-xl font-bold shadow-xl hover:shadow-cyan-500/30 hover:scale-105 transition-all duration-300 flex items-center justify-center space-x-2"
                             >
-                                <Play className="w-5 h-5 md:w-6 md:h-6" />
-                                <span>Start Now</span>
+                                <Play className="w-5 h-5" />
+                                <span>{audioSpeakerEnabled ? "Start with Audio Speaker" : "Start Teleprompter"}</span>
                             </button>
                             <button
                                 onClick={() => startCountdown(5)}
-                                className="flex-1 px-6 md:px-8 py-3 md:py-4 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-semibold transition-all duration-300 flex items-center justify-center space-x-2"
+                                className="flex-1 px-6 md:px-8 py-3.5 bg-gray-700 hover:bg-gray-600 text-white rounded-xl font-semibold transition-all duration-300 flex items-center justify-center space-x-2"
                             >
                                 <span>5s Countdown</span>
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Audio Speaker & Loud Mode Settings Modal */}
+            {showAudioSettings && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[110] p-4">
+                    <div className="bg-gray-900 border-2 border-cyan-500/40 rounded-3xl p-6 md:p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl space-y-6 animate-scaleIn">
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between border-b border-gray-800 pb-4">
+                            <div className="flex items-center space-x-3">
+                                <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
+                                    <Headphones className="w-6 h-6 text-white" />
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl font-bold text-white">Audio Speaker & Loud Mode</h2>
+                                    <p className="text-sm text-gray-400">Voice guidance, pronunciation, and acoustic volume projection</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowAudioSettings(false)}
+                                className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        {/* Modal Tabs */}
+                        <div className="flex border-b border-gray-800">
+                            <button
+                                onClick={() => setAudioSettingsTab("voice")}
+                                className={`flex-1 py-3 font-semibold text-sm border-b-2 transition-colors flex items-center justify-center space-x-2 ${
+                                    audioSettingsTab === "voice"
+                                        ? "border-cyan-400 text-cyan-400 bg-cyan-500/5"
+                                        : "border-transparent text-gray-400 hover:text-gray-300"
+                                }`}
+                            >
+                                <Volume2 className="w-4 h-4" />
+                                <span>Voice & Loud Settings</span>
+                            </button>
+                            <button
+                                onClick={() => setAudioSettingsTab("coach")}
+                                className={`flex-1 py-3 font-semibold text-sm border-b-2 transition-colors flex items-center justify-center space-x-2 ${
+                                    audioSettingsTab === "coach"
+                                        ? "border-cyan-400 text-cyan-400 bg-cyan-500/5"
+                                        : "border-transparent text-gray-400 hover:text-gray-300"
+                                }`}
+                            >
+                                <Sparkles className="w-4 h-4" />
+                                <span>How to Speak (Coach Guide)</span>
+                            </button>
+                        </div>
+
+                        {/* Tab 1: Voice & Loud Mode Controls */}
+                        {audioSettingsTab === "voice" && (
+                            <div className="space-y-6">
+                                {/* Master Audio Speaker Switch */}
+                                <div className="flex items-center justify-between p-4 bg-gray-800/60 rounded-2xl border border-gray-700">
+                                    <div>
+                                        <div className="font-semibold text-white">Audio Speaker (Voice Guide)</div>
+                                        <div className="text-xs text-gray-400">Reads text aloud during playback so you know how to speak and pace</div>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            const next = !audioSpeakerEnabled;
+                                            setAudioSpeakerEnabled(next);
+                                            localStorage.setItem("teleprompter_audio_speaker", String(next));
+                                            if (next && loudAudioMode) playAudioChime(true);
+                                        }}
+                                        className={`w-14 h-8 flex items-center rounded-full p-1 transition-colors ${
+                                            audioSpeakerEnabled ? "bg-cyan-500" : "bg-gray-700"
+                                        }`}
+                                    >
+                                        <div
+                                            className={`bg-white w-6 h-6 rounded-full shadow-md transform transition-transform ${
+                                                audioSpeakerEnabled ? "translate-x-6" : "translate-x-0"
+                                            }`}
+                                        />
+                                    </button>
+                                </div>
+
+                                {/* Best Loud Audio Mode Card */}
+                                <div className="p-5 bg-gradient-to-r from-amber-950/40 via-orange-950/30 to-amber-950/40 rounded-2xl border-2 border-amber-500/50 shadow-xl space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center space-x-2.5">
+                                            <div className="w-10 h-10 bg-amber-500/20 border border-amber-500/50 rounded-xl flex items-center justify-center">
+                                                <Megaphone className="w-5 h-5 text-amber-400" />
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-white flex items-center space-x-2">
+                                                    <span>Best Loud Audio Mode</span>
+                                                    <span className="bg-amber-500 text-black text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                                                        Max Projection
+                                                    </span>
+                                                </div>
+                                                <div className="text-xs text-amber-200/80">
+                                                    100% volume gain, enhanced stage frequencies, and high-clarity voice
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                const next = !loudAudioMode;
+                                                setLoudAudioMode(next);
+                                                localStorage.setItem("teleprompter_loud_mode", String(next));
+                                                if (next) playAudioChime(true);
+                                            }}
+                                            className={`w-14 h-8 flex items-center rounded-full p-1 transition-colors ${
+                                                loudAudioMode ? "bg-amber-500" : "bg-gray-700"
+                                            }`}
+                                        >
+                                            <div
+                                                className={`bg-white w-6 h-6 rounded-full shadow-md transform transition-transform ${
+                                                    loudAudioMode ? "translate-x-6" : "translate-x-0"
+                                                }`}
+                                            />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Preset Mode Buttons */}
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">
+                                        Quick Audio Presets
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-2.5">
+                                        <button
+                                            onClick={() => applyAudioPreset("loud_stage")}
+                                            className={`p-3 rounded-xl border text-left transition-all ${
+                                                loudAudioMode && speechVolume === 1.0
+                                                    ? "bg-amber-500/20 border-amber-400 text-white shadow-lg"
+                                                    : "bg-gray-800/60 border-gray-700 text-gray-300 hover:border-gray-600"
+                                            }`}
+                                        >
+                                            <div className="font-bold text-sm text-amber-400">📢 Loud Stage</div>
+                                            <div className="text-xs text-gray-400">Max volume & crisp projection</div>
+                                        </button>
+                                        <button
+                                            onClick={() => applyAudioPreset("natural_studio")}
+                                            className={`p-3 rounded-xl border text-left transition-all ${
+                                                !loudAudioMode && speechRate === 1.0
+                                                    ? "bg-cyan-500/20 border-cyan-400 text-white shadow-lg"
+                                                    : "bg-gray-800/60 border-gray-700 text-gray-300 hover:border-gray-600"
+                                            }`}
+                                        >
+                                            <div className="font-bold text-sm text-cyan-400">🎙️ Natural Studio</div>
+                                            <div className="text-xs text-gray-400">Balanced, warm tone</div>
+                                        </button>
+                                        <button
+                                            onClick={() => applyAudioPreset("energetic")}
+                                            className="p-3 rounded-xl border bg-gray-800/60 border-gray-700 text-gray-300 hover:border-gray-600 text-left transition-all"
+                                        >
+                                            <div className="font-bold text-sm text-purple-400">⚡ Dynamic & Fast</div>
+                                            <div className="text-xs text-gray-400">Upbeat 1.15x pace</div>
+                                        </button>
+                                        <button
+                                            onClick={() => applyAudioPreset("steady_practice")}
+                                            className="p-3 rounded-xl border bg-gray-800/60 border-gray-700 text-gray-300 hover:border-gray-600 text-left transition-all"
+                                        >
+                                            <div className="font-bold text-sm text-teal-400">🧘 Steady Practice</div>
+                                            <div className="text-xs text-gray-400">Deliberate 0.85x articulation</div>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Voice Selector */}
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wider mb-2">
+                                        Speaker Voice ({voices.length} Available)
+                                    </label>
+                                    <select
+                                        value={selectedVoiceURI}
+                                        onChange={(e) => {
+                                            setSelectedVoiceURI(e.target.value);
+                                            localStorage.setItem("teleprompter_voice_uri", e.target.value);
+                                        }}
+                                        className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-cyan-500 text-sm"
+                                    >
+                                        {voices.map((v) => (
+                                            <option key={v.voiceURI} value={v.voiceURI}>
+                                                {v.name} ({v.lang}) {v.name.includes("Natural") || v.name.includes("Google") ? "⭐ High Clarity" : ""}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Controls: Volume, Rate, Pitch */}
+                                <div className="grid sm:grid-cols-3 gap-4">
+                                    <div className="bg-gray-800/40 p-3.5 rounded-xl border border-gray-700/60">
+                                        <div className="flex justify-between text-xs text-gray-300 mb-1">
+                                            <span>Volume</span>
+                                            <span className="font-mono text-cyan-400">{Math.round((loudAudioMode ? 1.0 : speechVolume) * 100)}%</span>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min="0.2"
+                                            max="1"
+                                            step="0.05"
+                                            value={loudAudioMode ? 1.0 : speechVolume}
+                                            disabled={loudAudioMode}
+                                            onChange={(e) => setSpeechVolume(Number(e.target.value))}
+                                            className="w-full"
+                                        />
+                                        {loudAudioMode && (
+                                            <div className="text-[10px] text-amber-400 font-semibold mt-1">Locked at 100% in Loud Mode</div>
+                                        )}
+                                    </div>
+
+                                    <div className="bg-gray-800/40 p-3.5 rounded-xl border border-gray-700/60">
+                                        <div className="flex justify-between text-xs text-gray-300 mb-1">
+                                            <span>Speaking Rate</span>
+                                            <span className="font-mono text-cyan-400">{speechRate.toFixed(2)}x</span>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min="0.5"
+                                            max="2.0"
+                                            step="0.05"
+                                            value={speechRate}
+                                            onChange={(e) => {
+                                                const val = Number(e.target.value);
+                                                setSpeechRate(val);
+                                                localStorage.setItem("teleprompter_speech_rate", val.toString());
+                                            }}
+                                            className="w-full"
+                                        />
+                                    </div>
+
+                                    <div className="bg-gray-800/40 p-3.5 rounded-xl border border-gray-700/60">
+                                        <div className="flex justify-between text-xs text-gray-300 mb-1">
+                                            <span>Pitch / Clarity</span>
+                                            <span className="font-mono text-cyan-400">{speechPitch.toFixed(2)}</span>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min="0.6"
+                                            max="1.4"
+                                            step="0.05"
+                                            value={speechPitch}
+                                            onChange={(e) => setSpeechPitch(Number(e.target.value))}
+                                            className="w-full"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Feature Toggles */}
+                                <div className="space-y-3 pt-2">
+                                    <label className="flex items-center space-x-3 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={autoScrollWithAudio}
+                                            onChange={(e) => setAutoScrollWithAudio(e.target.checked)}
+                                            className="w-4 h-4 rounded text-cyan-500 focus:ring-cyan-500 bg-gray-800 border-gray-700"
+                                        />
+                                        <span className="text-sm text-gray-200">
+                                            Auto-scroll teleprompter smoothly to each spoken sentence
+                                        </span>
+                                    </label>
+                                    <label className="flex items-center space-x-3 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={showVoiceTips}
+                                            onChange={(e) => setShowVoiceTips(e.target.checked)}
+                                            className="w-4 h-4 rounded text-cyan-500 focus:ring-cyan-500 bg-gray-800 border-gray-700"
+                                        />
+                                        <span className="text-sm text-gray-200">
+                                            Show real-time voice delivery cues (pauses, energy, inflection) while playing
+                                        </span>
+                                    </label>
+                                </div>
+
+                                {/* Test Speaker Button */}
+                                <div className="pt-2">
+                                    <button
+                                        onClick={testAudioSpeaker}
+                                        disabled={audioTestPlaying}
+                                        className="w-full py-3.5 bg-gradient-to-r from-cyan-600 via-blue-600 to-cyan-600 text-white rounded-xl font-bold shadow-lg hover:shadow-cyan-500/30 hover:scale-[1.02] transition-all flex items-center justify-center space-x-2"
+                                    >
+                                        <Volume2 className="w-5 h-5" />
+                                        <span>{audioTestPlaying ? "Speaking Test Audio..." : "▶️ Test Loud Audio Speaker"}</span>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Tab 2: How to Speak Guide */}
+                        {audioSettingsTab === "coach" && (
+                            <div className="space-y-4 text-sm text-gray-300">
+                                <div className="p-4 bg-blue-900/20 border border-blue-700/50 rounded-2xl space-y-2">
+                                    <div className="font-bold text-white flex items-center space-x-2">
+                                        <Sparkles className="w-5 h-5 text-cyan-400" />
+                                        <span>The 5 Secrets to Confident Speech Delivery</span>
+                                    </div>
+                                    <p className="text-xs text-gray-300 leading-relaxed">
+                                        Use your teleprompter not just to read, but to command the room. Here is how professional speakers deliver impact:
+                                    </p>
+                                </div>
+
+                                <div className="grid gap-3">
+                                    <div className="p-3.5 bg-gray-800/50 border border-gray-700/60 rounded-xl">
+                                        <div className="font-bold text-white mb-1">📢 1. Diaphragmatic Projection (Best Loud Mode)</div>
+                                        <p className="text-xs text-gray-400">
+                                            Speak from your belly, not your throat. When Loud Audio Mode is on, match its resonance by projecting your voice towards the back row of your audience.
+                                        </p>
+                                    </div>
+                                    <div className="p-3.5 bg-gray-800/50 border border-gray-700/60 rounded-xl">
+                                        <div className="font-bold text-white mb-1">⏱️ 2. The Golden Pace (120 - 140 WPM)</div>
+                                        <p className="text-xs text-gray-400">
+                                            Nervous speakers rush at 180+ WPM. Keep your eyes on the WPM meter and let the audio speaker set a confident, relaxed cadence.
+                                        </p>
+                                    </div>
+                                    <div className="p-3.5 bg-gray-800/50 border border-gray-700/60 rounded-xl">
+                                        <div className="font-bold text-white mb-1">⏸️ 3. The Power of the 2-Second Silence</div>
+                                        <p className="text-xs text-gray-400">
+                                            Whenever you finish a big point, stop for 2 full seconds. Silence builds suspense and signals undeniable authority.
+                                        </p>
+                                    </div>
+                                    <div className="p-3.5 bg-gray-800/50 border border-gray-700/60 rounded-xl">
+                                        <div className="font-bold text-white mb-1">↗️ 4. Inflection and Energy Shifts</div>
+                                        <p className="text-xs text-gray-400">
+                                            End declarative statements with a downward, firm tone. Save upward inflection exclusively for genuine questions.
+                                        </p>
+                                    </div>
+                                    <div className="p-3.5 bg-gray-800/50 border border-gray-700/60 rounded-xl">
+                                        <div className="font-bold text-white mb-1">💡 5. Click-to-Practice Any Line</div>
+                                        <p className="text-xs text-gray-400">
+                                            You can click directly on any sentence in the teleprompter text at any time to hear how to speak that exact line aloud!
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

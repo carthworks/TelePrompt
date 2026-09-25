@@ -13,15 +13,15 @@ import {
   Mic,
   ArrowRight,
   CheckCircle2,
-  Home as HomeIcon,
-  Save,
   FolderOpen,
   Trash2,
   Download,
   Search,
   X,
   Folder,
-  Clock
+  Clock,
+  Volume2,
+  Megaphone
 } from "lucide-react";
 
 // Types for script management
@@ -51,12 +51,6 @@ export default function Home() {
   const [newFolderName, setNewFolderName] = useState("");
   const [showNewFolder, setShowNewFolder] = useState(false);
 
-  // Load default content and saved scripts on mount
-  useEffect(() => {
-    loadDefaultContent();
-    loadSavedScripts();
-  }, []);
-
   const loadDefaultContent = () => {
     fetch("/speech-content.txt")
       .then((response) => response.text())
@@ -81,6 +75,15 @@ export default function Home() {
     localStorage.setItem("savedScripts", JSON.stringify(scripts));
     setSavedScripts(scripts);
   };
+
+  // Load default content and saved scripts on mount
+  useEffect(() => {
+    loadDefaultContent();
+    const timer = setTimeout(() => {
+      loadSavedScripts();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -392,6 +395,15 @@ export default function Home() {
                       <p className="text-sm text-gray-400">Keyboard shortcuts</p>
                     </div>
                   </div>
+                  <div className="flex items-start space-x-3 col-span-2 sm:col-span-1">
+                    <CheckCircle2 className="w-5 h-5 text-cyan-400 mt-1 flex-shrink-0" />
+                    <div>
+                      <p className="text-white font-semibold flex items-center space-x-1.5">
+                        <span>Audio Speaker & Loud Mode</span>
+                      </p>
+                      <p className="text-sm text-gray-400">Hear how to speak with voice guide</p>
+                    </div>
+                  </div>
                 </div>
 
                 {/* CTA Buttons */}
@@ -500,7 +512,7 @@ export default function Home() {
               <p className="text-xl text-gray-400">Everything you need for professional presentations</p>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-8">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
               {/* Feature 1 */}
               <div className="group bg-gray-900/50 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-8 hover:border-blue-500/50 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/20">
                 <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
@@ -531,6 +543,21 @@ export default function Home() {
                 <h4 className="text-xl font-bold text-white mb-3">Script Library</h4>
                 <p className="text-gray-400 leading-relaxed">
                   Save, organize, and manage all your scripts. Search, filter by folder, and export anytime.
+                </p>
+              </div>
+
+              {/* Feature 4: Audio Speaker & Loud Mode */}
+              <div className="group bg-gray-900/50 backdrop-blur-xl border border-cyan-500/40 rounded-2xl p-8 hover:border-cyan-400 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20 relative overflow-hidden">
+                <div className="absolute top-3 right-3 bg-gradient-to-r from-amber-500 to-orange-500 text-black text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center space-x-1">
+                  <Megaphone className="w-3 h-3" />
+                  <span>Loud Audio</span>
+                </div>
+                <div className="w-14 h-14 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  <Volume2 className="w-7 h-7 text-white" />
+                </div>
+                <h4 className="text-xl font-bold text-white mb-3">Audio Speaker & Coach</h4>
+                <p className="text-gray-400 leading-relaxed">
+                  Hear exactly how to speak your script with real-time text-to-speech, pronunciation tips, and Best Loud Audio Mode.
                 </p>
               </div>
             </div>
