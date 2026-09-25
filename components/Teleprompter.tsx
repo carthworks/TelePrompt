@@ -1914,70 +1914,45 @@ export default function Teleprompter({
 
             {/* All-In-One Opening Page Workspace Cockpit - First Fold / No Unnecessary Space / No Scroll */}
             {!isPlaying && position === 0 && (
-                <div className="fixed inset-0 bg-[#070c18] flex items-center justify-center z-50 p-3 sm:p-4 overflow-hidden select-none">
-                    <div className="bg-[#0b1322] border border-[#1e2c45] rounded-3xl p-4 sm:p-5 md:p-6 max-w-4xl w-full shadow-[0_25px_80px_rgba(0,0,0,0.85)] animate-scaleIn flex flex-col gap-3 sm:gap-3.5 my-auto overflow-hidden">
-                        {/* 1. Header Row (Title & Stats) */}
-                        <div className="flex items-center justify-between gap-3 border-b border-[#1e2c45]/80 pb-2.5 shrink-0">
-                            <div className="flex items-center space-x-2.5 min-w-0">
-                                <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 bg-cyan-950/60 border border-cyan-500/40 rounded-full text-cyan-300 text-[10px] font-extrabold uppercase tracking-wider shrink-0">
-                                    <Sparkles className="w-2.5 h-2.5 text-cyan-400" />
-                                    <span>Studio Pro</span>
-                                </span>
-                                <h1 className="text-base sm:text-lg md:text-xl font-black text-white truncate">
-                                    {title.replace(/^[\p{Emoji}\s]+/u, '').trim() || title}
-                                </h1>
-                            </div>
-                            <div className="flex items-center space-x-2 text-[11px] font-medium shrink-0">
-                                <span className="flex items-center space-x-1 px-2.5 py-1 rounded-full bg-[#131d2e] border border-[#1e2c45] text-gray-300">
-                                    <FileText className="w-3 h-3 text-cyan-400" />
-                                    <span>{totalWords} words</span>
-                                </span>
-                                <span className="flex items-center space-x-1 px-2.5 py-1 rounded-full bg-[#131d2e] border border-[#1e2c45] text-gray-300">
-                                    <Clock className="w-3 h-3 text-cyan-400" />
-                                    <span>~{formatTime(estimatedTotalTime)}</span>
-                                </span>
-                                <span className="flex items-center space-x-1 px-2.5 py-1 rounded-full bg-[#131d2e] border border-[#1e2c45] text-amber-300">
-                                    <Zap className="w-3 h-3 text-amber-400" />
-                                    <span>130 WPM</span>
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* 2. Welcome & 3-Step Rehearsal Workflow Banner (Fills Void & Explains Flow) */}
-                        <div className="bg-gradient-to-r from-cyan-950/25 via-[#0e1726] to-blue-950/25 border border-cyan-500/25 rounded-2xl p-2.5 sm:p-3 text-left shadow-sm">
-                            <div className="flex items-center justify-between flex-wrap gap-2 mb-1.5">
-                                <div className="flex items-center space-x-2">
-                                    <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-                                    <span className="text-xs font-bold text-white tracking-wide">
-                                        All-In-One Studio Teleprompter &amp; Loud Voice Coach
+                <div className="fixed inset-0 bg-[#070c18]/95 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4 select-none">
+                    <div className="bg-[#0b1322] border border-[#1e2c45] rounded-3xl p-4 sm:p-5 md:p-6 max-w-4xl w-full shadow-[0_25px_80px_rgba(0,0,0,0.85)] animate-scaleIn flex flex-col gap-3.5 sm:gap-4 overflow-hidden">
+                        {/* 1. Header Row (Title, Dynamic Stats & 3-Step Flow Pill) */}
+                        <div className="flex items-center justify-between gap-3 border-b border-[#1e2c45]/80 pb-3 shrink-0">
+                            <div className="flex flex-col space-y-1 min-w-0">
+                                <div className="flex items-center space-x-2.5 min-w-0">
+                                    <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 bg-cyan-950/60 border border-cyan-500/40 rounded-full text-cyan-300 text-[10px] font-extrabold uppercase tracking-wider shrink-0">
+                                        <Sparkles className="w-2.5 h-2.5 text-cyan-400" />
+                                        <span>Studio Pro</span>
+                                    </span>
+                                    <h1 className="text-base sm:text-lg md:text-xl font-black text-white truncate">
+                                        {title.replace(/^[\p{Emoji}\s]+/u, '').trim() || title}
+                                    </h1>
+                                </div>
+                                <div className="flex items-center space-x-2 text-[11px] text-gray-400">
+                                    <span className="flex items-center space-x-1 text-gray-300">
+                                        <FileText className="w-3 h-3 text-cyan-400" />
+                                        <span>{totalWords} words</span>
+                                    </span>
+                                    <span className="text-gray-600">•</span>
+                                    <span className="flex items-center space-x-1 text-gray-300">
+                                        <Clock className="w-3 h-3 text-cyan-400" />
+                                        <span>~{formatTime(estimatedTotalTime)}</span>
+                                    </span>
+                                    <span className="text-gray-600">•</span>
+                                    <span className="flex items-center space-x-1 text-amber-300 font-medium">
+                                        <Zap className="w-3 h-3 text-amber-400" />
+                                        <span>130 WPM</span>
                                     </span>
                                 </div>
-                                <span className="text-[10px] text-gray-400 font-medium hidden sm:inline">
-                                    Rehearse with natural pauses before recording
-                                </span>
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                                <div className="flex items-center space-x-2 bg-black/40 border border-white/5 rounded-xl px-2.5 py-1.5">
-                                    <span className="w-4 h-4 rounded-full bg-cyan-500/20 text-cyan-300 font-bold flex items-center justify-center text-[10px] shrink-0">1</span>
-                                    <div className="min-w-0">
-                                        <strong className="text-white block text-[11px] truncate">Select or Edit Script</strong>
-                                        <span className="text-[10px] text-gray-400">Choose below or press <kbd className="px-1 py-0.2 bg-white/10 rounded text-[9px] font-mono text-cyan-300">E</kbd></span>
-                                    </div>
-                                </div>
-                                <div className="flex items-center space-x-2 bg-black/40 border border-white/5 rounded-xl px-2.5 py-1.5">
-                                    <span className="w-4 h-4 rounded-full bg-cyan-500/20 text-cyan-300 font-bold flex items-center justify-center text-[10px] shrink-0">2</span>
-                                    <div className="min-w-0">
-                                        <strong className="text-white block text-[11px] truncate">Rehearse with Voice</strong>
-                                        <span className="text-[10px] text-gray-400">Pacing guide &amp; loud boost</span>
-                                    </div>
-                                </div>
-                                <div className="flex items-center space-x-2 bg-black/40 border border-white/5 rounded-xl px-2.5 py-1.5">
-                                    <span className="w-4 h-4 rounded-full bg-cyan-500/20 text-cyan-300 font-bold flex items-center justify-center text-[10px] shrink-0">3</span>
-                                    <div className="min-w-0">
-                                        <strong className="text-white block text-[11px] truncate">Present &amp; Record</strong>
-                                        <span className="text-[10px] text-gray-400">Press <kbd className="px-1 py-0.2 bg-white/10 rounded text-[9px] font-mono text-cyan-300">Space</kbd> or countdown</span>
-                                    </div>
-                                </div>
+
+                            {/* 3-Step Workflow Pill (Header Right, Matching Screenshot) */}
+                            <div className="hidden sm:flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-[#070e1c] border border-cyan-500/20 text-xs font-semibold text-cyan-300 shrink-0 shadow-sm">
+                                <span className="font-bold text-cyan-300">1. Select Script</span>
+                                <span className="text-gray-600">→</span>
+                                <span className="font-bold text-cyan-300">2. Voice Guide</span>
+                                <span className="text-gray-600">→</span>
+                                <span className="font-bold text-emerald-400">3. Space to Play</span>
                             </div>
                         </div>
 
