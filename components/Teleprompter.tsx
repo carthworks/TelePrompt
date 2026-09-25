@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, ChangeEvent } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, ChangeEvent } from "react";
 import {
     Play,
     Pause,
@@ -23,26 +23,149 @@ import {
     Headphones,
     Sparkles,
     X,
+    Edit3,
+    BookOpen,
+    Eye,
+    HelpCircle,
+    FileText,
+    Check,
+    Plus,
+    Trash2,
+    Download,
+    Search,
+    Folder,
+    AlignLeft,
+    AlignCenter,
+    Shield,
+    ExternalLink,
+    Lock,
+    Info,
+    Clock,
+    Zap,
+    Rocket,
+    Mic,
+    Video,
+    Heart,
+    Keyboard,
 } from "lucide-react";
 
-interface TeleprompterProps {
+export interface SavedScript {
+    id: string;
+    title: string;
+    content: string;
+    folder: string;
+    createdAt: number;
+    updatedAt: number;
+}
+
+export type Theme = "dark" | "light" | "sepia" | "blue" | "contrast";
+
+export const themes: Record<Theme, { bg: string; text: string; line: string; name: string }> = {
+    dark: { bg: "bg-gray-950", text: "text-white", line: "bg-emerald-500", name: "Pro Dark (OLED)" },
+    light: { bg: "bg-slate-100", text: "text-slate-900", line: "bg-blue-600", name: "Studio Clean Light" },
+    sepia: { bg: "bg-[#f4ecd8]", text: "text-[#3e2e1e]", line: "bg-amber-600", name: "Warm Sepia (Reading)" },
+    blue: { bg: "bg-blue-950", text: "text-blue-50", line: "bg-cyan-400", name: "Cyber Blue" },
+    contrast: { bg: "bg-black", text: "text-[#ffff00]", line: "bg-[#ffff00]", name: "WCAG AAA High Contrast (Yellow/Black)" },
+};
+
+export const QUICK_TEMPLATES = [
+    {
+        id: "investor_pitch",
+        title: "🚀 Investor Pitch Deck",
+        category: "Business",
+        description: "Hook investors, prove traction, and ask for capital in 2 minutes",
+        content: `[Opening Hook]
+Hello everyone. Today, over 85% of presenters report acute stage anxiety and irregular pacing during high-stakes presentations.
+
+[The Problem]
+Current teleprompters are dumb scrolling screens. They don't guide your voice, they don't teach you where to pause, and they fail in noisy acoustic halls.
+
+[Our Breakthrough Solution]
+We created TelePrompt Pro—the world's first AI-assisted teleprompter with Best Loud Audio Mode, natural cadence cueing, and interactive sentence guidance.
+
+[Traction & Metrics]
+In the last 90 days alone, we reached over 45,000 active keynoters, podcasters, and YouTube creators across 32 countries.
+
+[The Vision & Ask]
+We are currently raising our seed round to expand real-time speech intelligence across all platforms. Join us on this journey. Thank you!`,
+    },
+    {
+        id: "keynote_speech",
+        title: "🎤 Inspiring Keynote",
+        category: "Keynote",
+        description: "Engage large auditoriums with rhythm, visionary storytelling, and confidence",
+        content: `[Welcome & Context]
+Good morning honored guests, colleagues, and visionary leaders.
+
+[The Turning Point]
+We gather today at an unprecedented moment in human history. The tools we build today will determine the trajectory of tomorrow.
+
+[The Core Message]
+True leadership is not about having all the answers—it is about having the courage to ask the boldest questions.
+
+[Real-World Impact]
+When we empower individuals with accessible, human-centric technology, we unleash innovation in every corner of the world.
+
+[Closing Call to Action]
+Let us build that future together—not with hesitation, but with bold, unwavering optimism. Thank you!`,
+    },
+    {
+        id: "youtube_video",
+        title: "🎬 High-Engagement YouTube Script",
+        category: "Content creation",
+        description: "Capture attention in the first 5 seconds and maintain viewer retention",
+        content: `[Hook - First 5 Seconds]
+Wait! Don't scroll away. If you speak on camera or present to clients, this one trick will instantly make you 10x more persuasive!
+
+[Introduction]
+Welcome back to the channel, friends! Today we are breaking down the exact vocal delivery techniques used by the world's highest-paid keynote speakers.
+
+[Step 1: The Tactical Pause]
+Notice what happens when you pause right before a key takeaway. The audience leans in immediately.
+
+[Step 2: Pitch Inflection]
+Next, ensure your pitch rises with curious questions and lands with steady conviction on statements.
+
+[Outro & Engagement]
+If you found this valuable, smash that like button, subscribe to the channel, and drop your thoughts in the comments below!`,
+    },
+    {
+        id: "wedding_toast",
+        title: "🥂 Heartfelt Celebration Toast",
+        category: "Personal",
+        description: "Warm, memorable, and emotional toast for weddings and milestones",
+        content: `[Welcome & Attention]
+Good evening everyone! Could I please have everyone's attention for just two short minutes?
+
+[The Friendship & Origin]
+For those who don't know me, I have had the incredible joy of being best friends with our newlywed for more than ten years.
+
+[The Turning Point]
+I still remember the day they met. Within five minutes of hearing the story, I knew something truly special had just begun.
+
+[The Blessing]
+They complement each other in every possible way—bringing kindness, spontaneous laughter, and deep empathy into every room they enter.
+
+[The Toast]
+Please raise your glasses high with me. To a lifetime of boundless adventure, deep joy, and everlasting love. To our wonderful couple! Cheers!`,
+    },
+];
+
+export interface TeleprompterProps {
     content: string;
     title?: string;
     defaultSpeed?: number;
     defaultFontSize?: number;
-    onHome?: () => void;
+    savedScripts?: SavedScript[];
+    onContentChange?: (newContent: string) => void;
+    onTitleChange?: (newTitle: string) => void;
+    onSaveScript?: (title: string, content: string, folder: string) => void;
+    onLoadScript?: (script: SavedScript) => void;
+    onDeleteScript?: (id: string) => void;
     onUpload?: (e: ChangeEvent<HTMLInputElement>) => void;
     onSave?: () => void;
+    onHome?: () => void;
 }
-
-type Theme = "dark" | "light" | "sepia" | "blue";
-
-const themes = {
-    dark: { bg: "bg-gray-950", text: "text-white", line: "bg-green-500" },
-    light: { bg: "bg-gray-100", text: "text-gray-900", line: "bg-blue-500" },
-    sepia: { bg: "bg-[#f4ecd8]", text: "text-[#5c4b37]", line: "bg-orange-500" },
-    blue: { bg: "bg-blue-950", text: "text-blue-50", line: "bg-cyan-400" },
-};
 
 // Types for script sentences & speech coach guidance
 interface ScriptSentence {
@@ -148,6 +271,12 @@ export default function Teleprompter({
     title = "Teleprompter",
     defaultSpeed = 30,
     defaultFontSize = 24,
+    savedScripts = [],
+    onContentChange,
+    onTitleChange,
+    onSaveScript,
+    onLoadScript,
+    onDeleteScript,
     onHome,
     onUpload,
     onSave,
@@ -163,14 +292,42 @@ export default function Teleprompter({
     const [countdown, setCountdown] = useState<number | null>(null);
     const [elapsedTime, setElapsedTime] = useState(0);
     const [theme, setTheme] = useState<Theme>("dark");
-    const [wordsRead, setWordsRead] = useState(0);
+    const [scrollHeight, setScrollHeight] = useState<number>(1000);
     const [currentSection, setCurrentSection] = useState("");
     const [showSectionPause, setShowSectionPause] = useState(false);
+    const [autoPauseAtSections, setAutoPauseAtSections] = useState<boolean>(false);
     const [showCompletion, setShowCompletion] = useState(false);
+
+    // Accessibility & Typography State
+    const [fontFamily, setFontFamily] = useState<"sans" | "mono" | "serif">("sans");
+    const [textAlign, setTextAlign] = useState<"left" | "center">("left");
+    const [lineSpacing, setLineSpacing] = useState<"relaxed" | "loose">("relaxed");
+    const [showReadingGuide, setShowReadingGuide] = useState<boolean>(true);
+    const [guideOpacity, setGuideOpacity] = useState<number>(0.6);
+    const [showAccessibilityModal, setShowAccessibilityModal] = useState<boolean>(false);
+    const [showShortcutsModal, setShowShortcutsModal] = useState<boolean>(false);
+    const [liveAnnouncement, setLiveAnnouncement] = useState<string>("");
+
+    // In-Place Script Editor & Library State
+    const [showScriptEditor, setShowScriptEditor] = useState<boolean>(false);
+    const [editorText, setEditorText] = useState<string>(content);
+    const [editorScriptTitle, setEditorScriptTitle] = useState<string>(title);
+    const [showLibrary, setShowLibrary] = useState<boolean>(false);
+    const [searchQuery, setSearchQuery] = useState<string>("");
+    const [selectedFolder, setSelectedFolder] = useState<string>("All");
+    const [showSaveModal, setShowSaveModal] = useState<boolean>(false);
+    const [saveTitleInput, setSaveTitleInput] = useState<string>(title);
+    const [saveFolderInput, setSaveFolderInput] = useState<string>("General");
+    const [newFolderName, setNewFolderName] = useState<string>("");
+    const [showNewFolder, setShowNewFolder] = useState<boolean>(false);
+
+    // Web Trust & Legal Compliance State (Skill: web-trust-and-compliance)
+    const [showTrustModal, setShowTrustModal] = useState<boolean>(false);
+    const [trustTab, setTrustTab] = useState<"privacy" | "terms" | "about" | "support">("privacy");
 
     // Audio Speaker & Best Loud Audio Mode State
     const [audioSpeakerEnabled, setAudioSpeakerEnabled] = useState(false);
-    const [loudAudioMode, setLoudAudioMode] = useState(true);
+    const [loudAudioMode, setLoudAudioMode] = useState(false);
     const [showAudioSettings, setShowAudioSettings] = useState(false);
     const [audioSettingsTab, setAudioSettingsTab] = useState<"voice" | "coach">("voice");
     const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
@@ -184,23 +341,46 @@ export default function Teleprompter({
     const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
     const [audioTestPlaying, setAudioTestPlaying] = useState<boolean>(false);
 
+    // Keep editor in sync when external content or title updates
+    useEffect(() => {
+        setEditorText(content);
+    }, [content]);
+
+    useEffect(() => {
+        setEditorScriptTitle(title);
+        setSaveTitleInput(title);
+    }, [title]);
+
+    const announce = useCallback((msg: string) => {
+        setLiveAnnouncement(msg);
+        const timer = setTimeout(() => setLiveAnnouncement(""), 2500);
+        return () => clearTimeout(timer);
+    }, []);
+
     const activeUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
     const speechTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const showSectionPauseRef = useRef(showSectionPause);
+    useEffect(() => {
+        showSectionPauseRef.current = showSectionPause;
+    }, [showSectionPause]);
 
     const containerRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
-    const wakeLockRef = useRef<any>(null);
+    const wakeLockRef = useRef<{ release: () => Promise<void> } | null>(null);
 
     // Parse script into structured sentences
     const scriptData = useMemo(() => parseScriptContent(content), [content]);
 
     // Calculate metrics
-    const totalWords = content.split(/\s+/).filter((w) => w.length > 0).length;
+    const totalWords = useMemo(() => content.split(/\s+/).filter((w) => w.length > 0).length, [content]);
+    const scrollableDistance = typeof window !== "undefined" ? Math.max(1, scrollHeight - window.innerHeight) : 1000;
+    const progress = Math.min(100, Math.max(0, (position / scrollableDistance) * 100));
+    const scrollPercentage = scrollHeight > 0 ? position / scrollHeight : 0;
+    const wordsRead = audioSpeakerEnabled && scriptData.allSentences.length > 0
+        ? Math.min(totalWords, scriptData.allSentences.slice(0, currentSentenceIndex + 1).reduce((acc, s) => acc + s.text.split(/\s+/).filter(Boolean).length, 0))
+        : Math.round(totalWords * scrollPercentage);
     const wpm = elapsedTime > 0 ? Math.round((wordsRead / elapsedTime) * 60) : 0;
-    const estimatedTotalTime = speed > 0 ? Math.round((totalWords / 120) * 60) : 0; // Assuming 120 WPM average
-    const progress = contentRef.current
-        ? Math.min(100, (position / (contentRef.current.scrollHeight - window.innerHeight)) * 100)
-        : 0;
+    const estimatedTotalTime = Math.round((totalWords / 130) * 60); // 130 WPM standard studio target pace
 
     // Helper: Select best loud & clear voice
     const selectBestLoudVoice = (voiceList: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null => {
@@ -227,7 +407,7 @@ export default function Teleprompter({
     const playAudioChime = (loud: boolean = true) => {
         try {
             if (typeof window === "undefined") return;
-            const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+            const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
             if (!AudioCtx) return;
             const ctx = new AudioCtx();
             const now = ctx.currentTime;
@@ -262,7 +442,9 @@ export default function Teleprompter({
             const firstEl = document.getElementById("sentence-0");
             const baseOffset = firstEl ? firstEl.offsetTop : 0;
             const targetOffset = el.offsetTop - baseOffset;
-            setPosition(Math.max(0, targetOffset));
+            requestAnimationFrame(() => {
+                setPosition(Math.max(0, targetOffset));
+            });
         }
     };
 
@@ -320,30 +502,38 @@ export default function Teleprompter({
 
     // Load saved settings from localStorage on mount
     useEffect(() => {
-        const savedTheme = localStorage.getItem("teleprompter_theme") as Theme;
-        if (savedTheme && themes[savedTheme]) {
-            setTheme(savedTheme);
-        }
+        const timer = setTimeout(() => {
+            const savedTheme = localStorage.getItem("teleprompter_theme") as Theme;
+            if (savedTheme && themes[savedTheme]) {
+                setTheme(savedTheme);
+            }
 
-        const savedSpeaker = localStorage.getItem("teleprompter_audio_speaker");
-        if (savedSpeaker !== null) {
-            setAudioSpeakerEnabled(savedSpeaker === "true");
-        }
+            const savedSpeaker = localStorage.getItem("teleprompter_audio_speaker");
+            if (savedSpeaker !== null) {
+                setAudioSpeakerEnabled(savedSpeaker === "true");
+            }
 
-        const savedLoud = localStorage.getItem("teleprompter_loud_mode");
-        if (savedLoud !== null) {
-            setLoudAudioMode(savedLoud === "true");
-        }
+            const savedLoud = localStorage.getItem("teleprompter_loud_mode");
+            if (savedLoud !== null) {
+                setLoudAudioMode(savedLoud === "true");
+            }
 
-        const savedVoice = localStorage.getItem("teleprompter_voice_uri");
-        if (savedVoice) {
-            setSelectedVoiceURI(savedVoice);
-        }
+            const savedVoice = localStorage.getItem("teleprompter_voice_uri");
+            if (savedVoice) {
+                setSelectedVoiceURI(savedVoice);
+            }
 
-        const savedRate = localStorage.getItem("teleprompter_speech_rate");
-        if (savedRate) {
-            setSpeechRate(parseFloat(savedRate));
-        }
+            const savedRate = localStorage.getItem("teleprompter_speech_rate");
+            if (savedRate) {
+                setSpeechRate(parseFloat(savedRate));
+            }
+
+            const savedAutoPause = localStorage.getItem("teleprompter_auto_pause_sections");
+            if (savedAutoPause !== null) {
+                setAutoPauseAtSections(savedAutoPause === "true");
+            }
+        }, 0);
+        return () => clearTimeout(timer);
     }, []);
 
     // Load voices
@@ -403,21 +593,23 @@ export default function Teleprompter({
 
         if (!isPlaying || !audioSpeakerEnabled) {
             window.speechSynthesis.cancel();
-            setIsSpeaking(false);
             if (speechTimeoutRef.current) {
                 clearTimeout(speechTimeoutRef.current);
                 speechTimeoutRef.current = null;
             }
-            return;
+            const timer = setTimeout(() => setIsSpeaking(false), 0);
+            return () => clearTimeout(timer);
         }
 
         const allSentences = scriptData.allSentences;
         if (allSentences.length === 0) return;
 
         if (currentSentenceIndex >= allSentences.length) {
-            setIsPlaying(false);
-            setShowCompletion(true);
-            return;
+            const timer = setTimeout(() => {
+                setIsPlaying(false);
+                setShowCompletion(true);
+            }, 0);
+            return () => clearTimeout(timer);
         }
 
         const currentSentence = allSentences[currentSentenceIndex];
@@ -431,14 +623,22 @@ export default function Teleprompter({
         // Section handling:
         if (currentSentence.isSection) {
             setCurrentSection(currentSentence.text);
-            if (currentSentenceIndex > 0) {
-                setIsPlaying(false);
-                setShowSectionPause(true);
+            if (autoPauseAtSections && currentSentenceIndex > 0) {
+                const timer = setTimeout(() => {
+                    setIsPlaying(false);
+                    setShowSectionPause(true);
+                }, 0);
+                return () => clearTimeout(timer);
+            } else {
+                // Smooth breath transition through section cue without freezing prompter
+                speechTimeoutRef.current = setTimeout(() => {
+                    setCurrentSentenceIndex((prev) => prev + 1);
+                }, 350);
                 return;
             }
         }
 
-        let cleanText = currentSentence.text.replace(/\[([^\]]+)\]/g, "").trim();
+        const cleanText = currentSentence.text.replace(/\[([^\]]+)\]/g, "").trim();
         if (!cleanText) {
             speechTimeoutRef.current = setTimeout(() => {
                 setCurrentSentenceIndex((prev) => prev + 1);
@@ -506,6 +706,8 @@ export default function Teleprompter({
         speechVolume,
         autoScrollWithAudio,
         scriptData,
+        voices,
+        autoPauseAtSections,
     ]);
 
     // Elapsed time tracker
@@ -519,44 +721,53 @@ export default function Teleprompter({
         return () => clearInterval(interval);
     }, [isPlaying]);
 
-    // Words read tracker (estimate based on position or speech)
+    // Scroll height tracker
     useEffect(() => {
-        if (contentRef.current) {
-            const scrollPercentage = position / contentRef.current.scrollHeight;
-            if (audioSpeakerEnabled && scriptData.allSentences.length > 0) {
-                const wordsSpoken = scriptData.allSentences
-                    .slice(0, currentSentenceIndex + 1)
-                    .reduce((acc, s) => acc + s.text.split(/\s+/).filter(Boolean).length, 0);
-                setWordsRead(Math.min(totalWords, wordsSpoken));
-            } else {
-                setWordsRead(Math.round(totalWords * scrollPercentage));
+        const updateHeight = () => {
+            if (contentRef.current) {
+                setScrollHeight(contentRef.current.scrollHeight);
             }
+        };
+        const timer = setTimeout(updateHeight, 100);
+        window.addEventListener("resize", updateHeight);
+        return () => {
+            clearTimeout(timer);
+            window.removeEventListener("resize", updateHeight);
+        };
+    }, [content, fontSize]);
 
-            // Check for completion (reached end)
-            if (scrollPercentage >= 0.98 && isPlaying && !audioSpeakerEnabled) {
+    // Check for completion when reaching end
+    useEffect(() => {
+        if (progress >= 99 && isPlaying && !audioSpeakerEnabled) {
+            const timer = setTimeout(() => {
                 setIsPlaying(false);
                 setShowCompletion(true);
-            }
+            }, 0);
+            return () => clearTimeout(timer);
         }
-    }, [position, totalWords, isPlaying, audioSpeakerEnabled, currentSentenceIndex, scriptData]);
+    }, [progress, isPlaying, audioSpeakerEnabled]);
 
-    // Section detection and auto-pause
+    // Section detection and auto-pause for silent scrolling mode
     useEffect(() => {
+        if (!autoPauseAtSections || audioSpeakerEnabled) return;
         const sections = content.match(/\[([^\]]+)\]/g);
-        if (sections && contentRef.current) {
-            const currentScrollPercentage = position / contentRef.current.scrollHeight;
+        if (sections && scrollHeight > 0) {
+            const currentScrollPercentage = position / scrollHeight;
             const sectionIndex = Math.floor(currentScrollPercentage * sections.length);
             const section = sections[sectionIndex];
 
             if (section && section !== currentSection) {
-                setCurrentSection(section);
-                if (isPlaying && sectionIndex > 0) {
-                    setIsPlaying(false);
-                    setShowSectionPause(true);
-                }
+                const timer = setTimeout(() => {
+                    setCurrentSection(section);
+                    if (isPlaying && sectionIndex > 0) {
+                        setIsPlaying(false);
+                        setShowSectionPause(true);
+                    }
+                }, 0);
+                return () => clearTimeout(timer);
             }
         }
-    }, [position, content, currentSection, isPlaying]);
+    }, [position, content, currentSection, isPlaying, scrollHeight, autoPauseAtSections, audioSpeakerEnabled]);
 
     // Countdown timer
     useEffect(() => {
@@ -566,88 +777,23 @@ export default function Teleprompter({
             }, 1000);
             return () => clearTimeout(timer);
         } else if (countdown === 0) {
-            setCountdown(null);
-            setIsPlaying(true);
+            const timer = setTimeout(() => {
+                setCountdown(null);
+                setIsPlaying(true);
+            }, 0);
+            return () => clearTimeout(timer);
         }
     }, [countdown]);
 
-    // Keyboard shortcuts
+    const positionRef = useRef(position);
     useEffect(() => {
-        const handleKeyPress = (e: KeyboardEvent) => {
-            if (e.code === "Space") {
-                e.preventDefault();
-                setIsPlaying((prev) => !prev);
-                setShowSectionPause(false);
-            } else if (e.code === "ArrowUp") {
-                e.preventDefault();
-                setSpeed((prev) => Math.min(prev + 5, 100));
-            } else if (e.code === "ArrowDown") {
-                e.preventDefault();
-                setSpeed((prev) => Math.max(prev - 5, 5));
-            } else if (e.code === "KeyR") {
-                e.preventDefault();
-                resetPosition();
-            } else if (e.code === "KeyF") {
-                e.preventDefault();
-                toggleFullscreen();
-            } else if (e.code === "KeyM") {
-                e.preventDefault();
-                setIsMirrored((prev) => !prev);
-            } else if (e.code === "KeyC") {
-                e.preventDefault();
-                setShowControls((prev) => !prev);
-            } else if (e.code === "KeyS") {
-                e.preventDefault();
-                savePosition();
-            } else if (e.code === "KeyA") {
-                e.preventDefault();
-                setAudioSpeakerEnabled((prev) => {
-                    const next = !prev;
-                    localStorage.setItem("teleprompter_audio_speaker", String(next));
-                    if (next && loudAudioMode) playAudioChime(true);
-                    return next;
-                });
-            } else if (e.code === "KeyL") {
-                e.preventDefault();
-                setLoudAudioMode((prev) => {
-                    const next = !prev;
-                    localStorage.setItem("teleprompter_loud_mode", String(next));
-                    if (next) playAudioChime(true);
-                    return next;
-                });
-            }
-        };
+        positionRef.current = position;
+    }, [position]);
 
-        window.addEventListener("keydown", handleKeyPress);
-        return () => window.removeEventListener("keydown", handleKeyPress);
-    }, [loudAudioMode]);
-
-    // Wake Lock API
-    useEffect(() => {
-        const requestWakeLock = async () => {
-            if ("wakeLock" in navigator) {
-                try {
-                    wakeLockRef.current = await (navigator as any).wakeLock.request("screen");
-                } catch (err) {
-                    console.log("Wake Lock error:", err);
-                }
-            }
-        };
-
-        requestWakeLock();
-
-        return () => {
-            if (wakeLockRef.current) {
-                wakeLockRef.current.release();
-            }
-        };
-    }, []);
-
-    const resetPosition = () => {
+    const resetPosition = useCallback(() => {
         setPosition(0);
         setIsPlaying(false);
         setElapsedTime(0);
-        setWordsRead(0);
         setCurrentSection("");
         setShowSectionPause(false);
         setShowCompletion(false);
@@ -657,19 +803,19 @@ export default function Teleprompter({
             window.speechSynthesis.cancel();
         }
         localStorage.removeItem("teleprompter_position");
-    };
+    }, []);
 
-    const savePosition = () => {
-        localStorage.setItem("teleprompter_position", position.toString());
+    const savePosition = useCallback(() => {
+        localStorage.setItem("teleprompter_position", positionRef.current.toString());
         // Show brief confirmation
         const notification = document.createElement("div");
         notification.className = "fixed top-24 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg z-50";
         notification.textContent = "Position saved!";
         document.body.appendChild(notification);
         setTimeout(() => notification.remove(), 2000);
-    };
+    }, []);
 
-    const toggleFullscreen = () => {
+    const toggleFullscreen = useCallback(() => {
         if (!document.fullscreenElement) {
             containerRef.current?.requestFullscreen();
             setIsFullscreen(true);
@@ -677,7 +823,7 @@ export default function Teleprompter({
             document.exitFullscreen();
             setIsFullscreen(false);
         }
-    };
+    }, []);
 
     const startCountdown = (seconds: number) => {
         setCountdown(seconds);
@@ -698,12 +844,249 @@ export default function Teleprompter({
         setFontSize((prev) => Math.max(12, Math.min(72, prev + delta)));
     };
 
-    const continueToNextSection = () => {
+    const continueToNextSection = useCallback(() => {
         setShowSectionPause(false);
+        setCurrentSentenceIndex((prev) => {
+            const allSentences = scriptData.allSentences;
+            if (allSentences[prev]?.isSection && prev + 1 < allSentences.length) {
+                return prev + 1;
+            }
+            return prev;
+        });
+        setPosition((prev) => prev + 15);
+        setIsPlaying(true);
+    }, [scriptData]);
+
+    const dismissSectionPause = (disableFuture: boolean = false) => {
+        setShowSectionPause(false);
+        if (disableFuture) {
+            setAutoPauseAtSections(false);
+            localStorage.setItem("teleprompter_auto_pause_sections", "false");
+            announce("Auto-pause at sections turned off");
+        }
+        setCurrentSentenceIndex((prev) => {
+            const allSentences = scriptData.allSentences;
+            if (allSentences[prev]?.isSection && prev + 1 < allSentences.length) {
+                return prev + 1;
+            }
+            return prev;
+        });
+        setPosition((prev) => prev + 15);
         setIsPlaying(true);
     };
 
-    const currentTheme = themes[theme];
+    const handleInsertSectionTag = (tag: string) => {
+        setEditorText((prev) => `${prev.trim()}\n\n[${tag}]\n`);
+    };
+
+    const handleApplyEditor = () => {
+        if (onContentChange) {
+            onContentChange(editorText);
+        }
+        if (onTitleChange && editorScriptTitle !== title) {
+            onTitleChange(editorScriptTitle);
+        }
+        resetPosition();
+        setShowScriptEditor(false);
+        announce("Script updated and ready in teleprompter");
+    };
+
+    const handleSelectTemplate = (templateId: string) => {
+        const tmpl = QUICK_TEMPLATES.find((t) => t.id === templateId);
+        if (tmpl) {
+            if (onContentChange) onContentChange(tmpl.content);
+            if (onTitleChange) onTitleChange(tmpl.title);
+            setEditorText(tmpl.content);
+            setEditorScriptTitle(tmpl.title);
+            resetPosition();
+            announce(`Loaded template: ${tmpl.title}`);
+        }
+    };
+
+    const handleExportTxt = (scriptToExport?: { title: string; content: string }) => {
+        const exportTitle = scriptToExport?.title || title || "speech";
+        const exportContent = scriptToExport?.content || content;
+        const blob = new Blob([exportContent], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${exportTitle.replace(/[^a-z0-9_-]/gi, "_")}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        announce("Script downloaded as text file");
+    };
+
+    const handleSaveCurrentScript = () => {
+        if (!saveTitleInput.trim()) {
+            alert("Please enter a title for your script");
+            return;
+        }
+        if (onSaveScript) {
+            onSaveScript(saveTitleInput, content, saveFolderInput);
+        }
+        setShowSaveModal(false);
+        announce(`Script saved to library under ${saveFolderInput}`);
+    };
+
+    const folders = useMemo(() => {
+        const set = new Set<string>(["General", "Pitches", "Keynotes", "Videos", "Personal"]);
+        savedScripts.forEach((s) => {
+            if (s.folder) set.add(s.folder);
+        });
+        return ["All", ...Array.from(set)];
+    }, [savedScripts]);
+
+    const filteredSavedScripts = useMemo(() => {
+        let list = savedScripts;
+        if (selectedFolder !== "All") {
+            list = list.filter((s) => s.folder === selectedFolder);
+        }
+        if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase();
+            list = list.filter((s) => s.title.toLowerCase().includes(q) || s.content.toLowerCase().includes(q));
+        }
+        return list;
+    }, [savedScripts, selectedFolder, searchQuery]);
+
+    // Keyboard shortcuts using stable ref callback
+    const handleKeyPressRef = useRef<(e: KeyboardEvent) => void>(() => {});
+    useEffect(() => {
+        handleKeyPressRef.current = (e: KeyboardEvent) => {
+            // Guard: Don't hijack keyboard shortcuts when user is typing in inputs/textareas
+            if (["INPUT", "TEXTAREA", "SELECT"].includes((e.target as HTMLElement)?.tagName)) {
+                return;
+            }
+
+            if (e.code === "Space" || e.code === "Enter") {
+                e.preventDefault();
+                if (showSectionPauseRef.current) {
+                    continueToNextSection();
+                    return;
+                }
+                setIsPlaying((prev) => {
+                    const next = !prev;
+                    announce(next ? `Teleprompter playing at ${speed} WPM` : "Teleprompter paused");
+                    return next;
+                });
+                setShowSectionPause(false);
+            } else if (e.code === "ArrowUp") {
+                e.preventDefault();
+                setSpeed((prev) => Math.min(prev + 5, 100));
+            } else if (e.code === "ArrowDown") {
+                e.preventDefault();
+                setSpeed((prev) => Math.max(prev - 5, 5));
+            } else if (e.code === "ArrowRight") {
+                e.preventDefault();
+                setFontSize((prev) => Math.min(prev + 2, 72));
+            } else if (e.code === "ArrowLeft") {
+                e.preventDefault();
+                setFontSize((prev) => Math.max(prev - 2, 14));
+            } else if (e.code === "KeyR") {
+                e.preventDefault();
+                resetPosition();
+                announce("Reset position to top");
+            } else if (e.code === "KeyF") {
+                e.preventDefault();
+                toggleFullscreen();
+            } else if (e.code === "KeyM") {
+                e.preventDefault();
+                setIsMirrored((prev) => !prev);
+            } else if (e.code === "KeyC") {
+                e.preventDefault();
+                setShowControls((prev) => !prev);
+            } else if (e.code === "KeyS") {
+                e.preventDefault();
+                savePosition();
+            } else if (e.code === "KeyA") {
+                e.preventDefault();
+                setAudioSpeakerEnabled((prev) => {
+                    const next = !prev;
+                    localStorage.setItem("teleprompter_audio_speaker", String(next));
+                    if (next && loudAudioMode) playAudioChime(true);
+                    announce(next ? "Audio Speaker enabled" : "Audio Speaker disabled");
+                    return next;
+                });
+            } else if (e.code === "KeyL") {
+                e.preventDefault();
+                setLoudAudioMode((prev) => {
+                    const next = !prev;
+                    localStorage.setItem("teleprompter_loud_mode", String(next));
+                    if (next) playAudioChime(true);
+                    announce(next ? "Best Loud Audio Mode 100% Boost ON" : "Loud Audio Mode OFF");
+                    return next;
+                });
+            } else if (e.code === "KeyE") {
+                e.preventDefault();
+                setShowScriptEditor((prev) => !prev);
+            } else if (e.code === "KeyB") {
+                e.preventDefault();
+                setShowLibrary((prev) => !prev);
+            } else if (e.code === "KeyG") {
+                e.preventDefault();
+                setShowReadingGuide((prev) => {
+                    const next = !prev;
+                    announce(next ? "Reading focus line guide enabled" : "Reading guide hidden");
+                    return next;
+                });
+            } else if (e.code === "Slash" || e.code === "KeyH") {
+                e.preventDefault();
+                setShowShortcutsModal((prev) => !prev);
+            } else if (e.code === "KeyT") {
+                e.preventDefault();
+                setShowTrustModal((prev) => !prev);
+            } else if (e.code === "Escape") {
+                setShowTrustModal(false);
+                setShowShortcutsModal(false);
+                setShowAccessibilityModal(false);
+                setShowAudioSettings(false);
+                setShowSettings(false);
+                setShowSaveModal(false);
+            }
+        };
+    });
+
+    useEffect(() => {
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (handleKeyPressRef.current) {
+                handleKeyPressRef.current(e);
+            }
+        };
+        window.addEventListener("keydown", onKeyDown);
+        return () => window.removeEventListener("keydown", onKeyDown);
+    }, []);
+
+    // Wake Lock API
+    useEffect(() => {
+        const requestWakeLock = async () => {
+            if ("wakeLock" in navigator) {
+                try {
+                    const nav = navigator as unknown as {
+                        wakeLock: {
+                            request: (type: string) => Promise<{ release: () => Promise<void> }>;
+                        };
+                    };
+                    wakeLockRef.current = await nav.wakeLock.request("screen");
+                } catch (err) {
+                    console.log("Wake Lock error:", err);
+                }
+            }
+        };
+
+        requestWakeLock();
+
+        return () => {
+            if (wakeLockRef.current) {
+                wakeLockRef.current.release();
+            }
+        };
+    }, []);
+
+    const currentTheme = themes[theme] || themes.dark;
+    const fontClass = fontFamily === "mono" ? "font-mono" : fontFamily === "serif" ? "font-serif" : "font-sans";
+    const alignClass = textAlign === "center" ? "text-center" : "text-left";
+    const leadingClass = lineSpacing === "loose" ? "leading-loose" : "leading-relaxed";
 
     return (
         <div
@@ -725,17 +1108,45 @@ export default function Teleprompter({
 
             {/* Section Pause Overlay */}
             {showSectionPause && (
-                <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[90]">
-                    <div className="bg-gray-900 border-2 border-blue-500 rounded-2xl p-8 max-w-md text-center">
-                        <h3 className="text-2xl font-bold text-white mb-4">Section Complete</h3>
-                        <p className="text-gray-300 mb-6">{currentSection}</p>
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[110] p-4">
+                    <div className="bg-gray-900 border-2 border-cyan-500/50 rounded-3xl p-6 md:p-8 max-w-md w-full text-center space-y-5 shadow-2xl relative animate-scaleIn">
                         <button
-                            onClick={continueToNextSection}
-                            className="px-8 py-4 bg-gradient-to-r from-blue-600 to-teal-600 text-white rounded-lg font-semibold hover:shadow-2xl hover:scale-105 transition-all duration-300 flex items-center justify-center space-x-2 mx-auto"
+                            onClick={() => dismissSectionPause(false)}
+                            className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white rounded-lg transition-colors"
+                            aria-label="Dismiss section pause"
                         >
-                            <span>Continue to Next Section</span>
-                            <ArrowRight className="w-5 h-5" />
+                            <X className="w-5 h-5" />
                         </button>
+
+                        <div className="w-12 h-12 bg-cyan-500/20 border border-cyan-500/40 rounded-2xl flex items-center justify-center mx-auto text-cyan-400">
+                            <Bookmark className="w-6 h-6" />
+                        </div>
+
+                        <div>
+                            <h3 className="text-2xl font-bold text-white mb-1">Section Cue Reached</h3>
+                            <p className="text-cyan-300 font-semibold text-lg">{currentSection}</p>
+                            <p className="text-xs text-gray-400 mt-1">Take a breath, reset your pacing, and command the room.</p>
+                        </div>
+
+                        <div className="space-y-2 pt-2">
+                            <button
+                                onClick={continueToNextSection}
+                                className="w-full py-3.5 bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 text-white rounded-xl font-bold hover:shadow-lg hover:shadow-cyan-500/30 hover:scale-[1.02] transition-all flex items-center justify-center space-x-2"
+                            >
+                                <span>Continue Speech</span>
+                                <ArrowRight className="w-5 h-5" />
+                            </button>
+                            <div className="text-[11px] text-gray-400">or press <kbd className="px-1.5 py-0.5 bg-gray-800 rounded text-gray-300">Space</kbd> or <kbd className="px-1.5 py-0.5 bg-gray-800 rounded text-gray-300">Enter</kbd></div>
+                        </div>
+
+                        <div className="pt-2 border-t border-gray-800">
+                            <button
+                                onClick={() => dismissSectionPause(true)}
+                                className="text-xs text-gray-400 hover:text-amber-300 transition-colors"
+                            >
+                                ⚡ Don&apos;t pause at sections anymore (Continuous Scroll)
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -758,7 +1169,7 @@ export default function Teleprompter({
                             🎉 Excellent Work!
                         </h2>
                         <p className="text-xl text-gray-300 mb-8">
-                            You've completed your speech!
+                            You&apos;ve completed your speech!
                         </p>
 
                         {/* Statistics */}
@@ -860,188 +1271,108 @@ export default function Teleprompter({
 
             {/* Control Panel */}
             {showControls && (
-                <div className="fixed top-0 left-0 right-0 bg-gray-900/95 backdrop-blur-sm border-b border-gray-700 p-3 md:p-4 z-50 transition-all duration-300">
-                    <div className="container mx-auto">
+                <div className="fixed top-0 left-0 right-0 bg-gray-950/92 backdrop-blur-md border-b border-white/[0.08] px-3 py-2.5 md:px-5 md:py-2.5 z-50 transition-all duration-300 shadow-xl">
+                    <div className="max-w-[1600px] mx-auto">
                         {/* Mobile Layout */}
-                        {/* Mobile Layout */}
-                        <div className="md:hidden space-y-3">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-2">
+                        <div className="md:hidden space-y-2">
+                            {/* Mobile Row 1: Brand, Transport & Clock */}
+                            <div className="flex items-center justify-between gap-2">
+                                <button
+                                    onClick={onHome || resetPosition}
+                                    className="flex items-center space-x-1.5 px-2.5 py-1 bg-white/5 border border-white/10 rounded-full text-xs font-bold text-gray-200 shrink-0"
+                                    title="TelePrompt Studio"
+                                >
+                                    <span className="w-4 h-4 rounded-full bg-gradient-to-tr from-cyan-400 to-sky-400 flex items-center justify-center text-gray-950 font-black text-[9px]">
+                                        TP
+                                    </span>
+                                    <span>TelePrompt</span>
+                                </button>
+
+                                {/* Center Play & Reset */}
+                                <div className="flex items-center space-x-1.5 bg-gray-900/90 border border-white/10 rounded-full px-2.5 py-1">
+                                    <button
+                                        onClick={resetPosition}
+                                        className="p-1.5 bg-white/5 hover:bg-white/10 rounded-full text-gray-300 transition-colors"
+                                        title="Reset"
+                                        aria-label="Reset position"
+                                    >
+                                        <RotateCcw className="w-4 h-4" />
+                                    </button>
                                     <button
                                         onClick={() => {
                                             setIsPlaying(!isPlaying);
                                             setShowSectionPause(false);
                                         }}
-                                        className="p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-                                    >
-                                        {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-                                    </button>
-                                    <button
-                                        onClick={resetPosition}
-                                        className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-                                        title="Reset"
-                                    >
-                                        <RotateCcw className="w-5 h-5" />
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            const next = !audioSpeakerEnabled;
-                                            setAudioSpeakerEnabled(next);
-                                            localStorage.setItem("teleprompter_audio_speaker", String(next));
-                                            if (next && loudAudioMode) playAudioChime(true);
-                                        }}
-                                        className={`p-2 rounded-lg transition-all ${
-                                            audioSpeakerEnabled
-                                                ? "bg-cyan-600 text-white shadow-md shadow-cyan-500/30 ring-2 ring-cyan-400"
-                                                : "bg-gray-700 text-gray-400"
+                                        className={`w-8 h-8 rounded-full flex items-center justify-center text-gray-950 font-bold transition-all shadow-md ${
+                                            isPlaying
+                                                ? "bg-gradient-to-tr from-amber-400 to-orange-400"
+                                                : "bg-gradient-to-tr from-cyan-400 to-sky-400"
                                         }`}
-                                        title="Audio Speaker (A)"
+                                        aria-label={isPlaying ? "Pause teleprompter" : "Play teleprompter"}
                                     >
-                                        {audioSpeakerEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            const next = !loudAudioMode;
-                                            setLoudAudioMode(next);
-                                            localStorage.setItem("teleprompter_loud_mode", String(next));
-                                            if (next) playAudioChime(true);
-                                        }}
-                                        className={`px-2 py-1.5 rounded text-xs font-bold transition-all flex items-center space-x-1 ${
-                                            loudAudioMode
-                                                ? "bg-gradient-to-r from-amber-500 to-orange-500 text-black font-extrabold"
-                                                : "bg-gray-800 text-gray-400 border border-gray-700"
-                                        }`}
-                                        title="Best Loud Audio Mode (L)"
-                                    >
-                                        <Megaphone className="w-3.5 h-3.5" />
-                                        <span>{loudAudioMode ? "LOUD" : "OFF"}</span>
-                                    </button>
-                                    <button
-                                        onClick={() => setShowAudioSettings(true)}
-                                        className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-cyan-300"
-                                        title="Audio Settings"
-                                    >
-                                        <Headphones className="w-5 h-5" />
+                                        {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
                                     </button>
                                     <button
                                         onClick={savePosition}
-                                        className="p-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
-                                        title="Save position"
+                                        className="p-1.5 bg-white/5 hover:bg-white/10 rounded-full text-gray-300 transition-colors"
+                                        title="Save Bookmark"
+                                        aria-label="Save bookmark position"
                                     >
-                                        <Bookmark className="w-5 h-5" />
+                                        <Bookmark className="w-4 h-4" />
                                     </button>
-                                    {onHome && (
-                                        <button
-                                            onClick={onHome}
-                                            className="p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-                                            title="Home"
-                                        >
-                                            <Home className="w-5 h-5" />
-                                        </button>
-                                    )}
                                 </div>
 
-                                <div className="text-sm text-gray-300 font-mono">
-                                    {formatTime(elapsedTime)}
+                                {/* Clock & Settings Button */}
+                                <div className="flex items-center space-x-1.5 shrink-0">
+                                    <div className="flex items-center space-x-1.5 px-2 py-1 bg-black/40 border border-white/5 rounded-full text-xs font-mono font-bold text-gray-200">
+                                        <span className={`w-1.5 h-1.5 rounded-full ${isPlaying ? "bg-emerald-400 animate-pulse" : "bg-gray-600"}`} />
+                                        <span>{formatTime(elapsedTime)}</span>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowSettings(!showSettings)}
+                                        className={`p-1.5 rounded-lg border transition-colors ${
+                                            showSettings ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-300" : "bg-gray-800 border-gray-700 text-gray-300"
+                                        }`}
+                                        aria-label="Toggle mobile settings"
+                                    >
+                                        <Settings className="w-4 h-4" />
+                                    </button>
                                 </div>
-
-                                <button
-                                    onClick={() => setShowSettings(!showSettings)}
-                                    className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-                                >
-                                    <Settings className="w-5 h-5" />
-                                </button>
                             </div>
 
-                            {showSettings && (
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div className="bg-gray-800 rounded-lg p-2">
-                                        <div className="text-xs text-gray-400 mb-1">Speed</div>
-                                        <div className="flex items-center justify-between">
-                                            <button onClick={() => adjustSpeed(-5)} className="p-1 bg-gray-700 rounded">
-                                                <ChevronDown className="w-4 h-4" />
-                                            </button>
-                                            <span className="text-sm font-mono">{speed}</span>
-                                            <button onClick={() => adjustSpeed(5)} className="p-1 bg-gray-700 rounded">
-                                                <ChevronUp className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-gray-800 rounded-lg p-2">
-                                        <div className="text-xs text-gray-400 mb-1">Font</div>
-                                        <div className="flex items-center justify-between">
-                                            <button onClick={() => adjustFontSize(-2)} className="p-1 bg-gray-700 rounded">
-                                                <ChevronDown className="w-4 h-4" />
-                                            </button>
-                                            <span className="text-sm font-mono">{fontSize}</span>
-                                            <button onClick={() => adjustFontSize(2)} className="p-1 bg-gray-700 rounded">
-                                                <ChevronUp className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    </div>
+                            {/* Mobile Row 2: Script Quick Card & Audio Guide */}
+                            <div className="flex items-center justify-between gap-1.5 text-xs">
+                                <div className="flex items-center space-x-1 px-2.5 py-1 bg-gray-900 border border-gray-800 rounded-lg min-w-0 flex-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                                    <button
+                                        onClick={() => {
+                                            setEditorText(content);
+                                            setEditorScriptTitle(title);
+                                            setShowScriptEditor(true);
+                                        }}
+                                        className="font-semibold text-gray-200 truncate text-left flex-1"
+                                    >
+                                        {title}
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setEditorText(content);
+                                            setEditorScriptTitle(title);
+                                            setShowScriptEditor(true);
+                                        }}
+                                        className="p-1 text-gray-400 hover:text-cyan-300 shrink-0"
+                                        title="Edit Script"
+                                    >
+                                        <Edit3 className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                        onClick={() => setShowLibrary(true)}
+                                        className="p-1 text-gray-400 hover:text-purple-300 shrink-0"
+                                        title="Library"
+                                    >
+                                        <BookOpen className="w-3.5 h-3.5" />
+                                    </button>
                                 </div>
-                            )}
-                        </div>
-
-                        {/* Desktop Layout */}
-                        <div className="hidden md:flex items-center justify-between">
-                            <div className="flex items-center space-x-2.5">
-                                <button
-                                    onClick={() => {
-                                        setIsPlaying(!isPlaying);
-                                        setShowSectionPause(false);
-                                    }}
-                                    className="p-3 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-                                >
-                                    {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
-                                </button>
-                                <button
-                                    onClick={resetPosition}
-                                    className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-                                    title="Reset (R)"
-                                >
-                                    <RotateCcw className="w-6 h-6" />
-                                </button>
-                                <button
-                                    onClick={savePosition}
-                                    className="p-3 bg-green-600 hover:bg-green-700 rounded-lg transition-colors"
-                                    title="Save position (S)"
-                                >
-                                    <Bookmark className="w-6 h-6" />
-                                </button>
-                                {onHome && (
-                                    <button
-                                        onClick={onHome}
-                                        className="p-3 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-                                        title="Home"
-                                    >
-                                        <Home className="w-6 h-6" />
-                                    </button>
-                                )}
-                                {onUpload && (
-                                    <label className="p-3 bg-green-600 hover:bg-green-700 rounded-lg transition-colors cursor-pointer" title="Upload">
-                                        <Upload className="w-6 h-6" />
-                                        <input
-                                            type="file"
-                                            accept=".txt,text/plain"
-                                            onChange={onUpload}
-                                            className="hidden"
-                                        />
-                                    </label>
-                                )}
-                                {onSave && (
-                                    <button
-                                        onClick={onSave}
-                                        className="p-3 bg-yellow-600 hover:bg-yellow-700 rounded-lg transition-colors"
-                                        title="Save"
-                                    >
-                                        <Save className="w-6 h-6" />
-                                    </button>
-                                )}
-
-                                {/* Audio Speaker & Loud Mode Controls */}
-                                <div className="h-8 w-px bg-gray-700 mx-1" />
 
                                 <button
                                     onClick={() => {
@@ -1050,146 +1381,381 @@ export default function Teleprompter({
                                         localStorage.setItem("teleprompter_audio_speaker", String(next));
                                         if (next && loudAudioMode) playAudioChime(true);
                                     }}
-                                    className={`px-3.5 py-2.5 rounded-lg transition-all flex items-center space-x-2 ${
+                                    className={`px-2.5 py-1 rounded-lg font-semibold flex items-center space-x-1 shrink-0 transition-colors ${
                                         audioSpeakerEnabled
-                                            ? "bg-cyan-600 hover:bg-cyan-500 text-white shadow-lg shadow-cyan-500/30 ring-2 ring-cyan-400"
-                                            : "bg-gray-800 hover:bg-gray-700 text-gray-400 border border-gray-700"
+                                            ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
+                                            : "bg-gray-800 text-gray-400 border border-gray-700"
                                     }`}
-                                    title="Audio Speaker / Voice Guide (A)"
                                 >
-                                    {audioSpeakerEnabled ? (
-                                        <Volume2 className="w-5 h-5 text-white" />
-                                    ) : (
-                                        <VolumeX className="w-5 h-5 text-gray-400" />
-                                    )}
-                                    <span className="text-sm font-semibold">
-                                        {audioSpeakerEnabled ? "Speaker ON" : "Speaker OFF"}
+                                    {audioSpeakerEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+                                    <span>{audioSpeakerEnabled ? "Voice ON" : "Voice OFF"}</span>
+                                </button>
+                            </div>
+
+                            {/* Mobile Settings Drawer */}
+                            {showSettings && (
+                                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-gray-800 text-xs">
+                                    <div className="bg-gray-900 border border-gray-800 rounded-lg p-2">
+                                        <div className="text-[10px] text-gray-400 font-semibold uppercase mb-1 flex items-center justify-between">
+                                            <span>Speed</span>
+                                            <span className="font-mono text-cyan-400">{speed}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <button onClick={() => adjustSpeed(-5)} className="px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded font-bold">−5</button>
+                                            <button onClick={() => adjustSpeed(5)} className="px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded font-bold">+5</button>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-gray-900 border border-gray-800 rounded-lg p-2">
+                                        <div className="text-[10px] text-gray-400 font-semibold uppercase mb-1 flex items-center justify-between">
+                                            <span>Font Size</span>
+                                            <span className="font-mono text-purple-400">{fontSize}px</span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <button onClick={() => adjustFontSize(-2)} className="px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded font-bold">−2</button>
+                                            <button onClick={() => adjustFontSize(2)} className="px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded font-bold">+2</button>
+                                        </div>
+                                    </div>
+
+                                    <div className="col-span-2 flex items-center justify-between gap-1.5 pt-1">
+                                        <button
+                                            onClick={() => setIsMirrored(!isMirrored)}
+                                            className={`flex-1 py-1.5 rounded-lg border text-center font-medium ${
+                                                isMirrored ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-300" : "bg-gray-800 border-gray-700 text-gray-300"
+                                            }`}
+                                        >
+                                            Mirror
+                                        </button>
+                                        <button
+                                            onClick={() => setShowAccessibilityModal(true)}
+                                            className="flex-1 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-amber-300 font-medium text-center"
+                                        >
+                                            A11y
+                                        </button>
+                                        <button
+                                            onClick={() => setShowShortcutsModal(true)}
+                                            className="flex-1 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 font-medium text-center"
+                                        >
+                                            Keys
+                                        </button>
+                                        <button
+                                            onClick={toggleFullscreen}
+                                            className="flex-1 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-gray-300 font-medium text-center"
+                                        >
+                                            {isFullscreen ? "Exit" : "Full"}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Desktop Layout - Broadcast Studio Pro 3-Zone Architecture */}
+                        <div className="hidden md:flex items-center justify-between gap-3">
+                            {/* ZONE 1: LEFT - Studio Brand & Active Script Hub */}
+                            <div className="flex items-center space-x-2.5 min-w-0">
+                                {/* Brand / Home Badge */}
+                                <button
+                                    onClick={onHome || resetPosition}
+                                    className="flex items-center space-x-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-xs font-semibold text-gray-200 transition-all hover:border-cyan-500/30 shrink-0"
+                                    title={onHome ? "Go Home" : "TelePrompt Studio Pro"}
+                                >
+                                    <span className="w-5 h-5 rounded-full bg-gradient-to-tr from-cyan-400 to-sky-400 flex items-center justify-center text-gray-950 font-black text-[10px]">
+                                        TP
                                     </span>
-                                    {audioSpeakerEnabled && isSpeaking && isPlaying && (
-                                        <span className="flex items-center space-x-0.5 ml-1">
-                                            <span className="w-1 h-3 bg-white animate-soundwave-1 rounded-full" />
-                                            <span className="w-1 h-4 bg-white animate-soundwave-2 rounded-full" />
-                                            <span className="w-1 h-2 bg-white animate-soundwave-3 rounded-full" />
-                                        </span>
-                                    )}
+                                    <span className="font-bold tracking-tight text-white hidden lg:inline">TelePrompt</span>
                                 </button>
 
-                                <button
-                                    onClick={() => {
-                                        const next = !loudAudioMode;
-                                        setLoudAudioMode(next);
-                                        localStorage.setItem("teleprompter_loud_mode", String(next));
-                                        if (next) playAudioChime(true);
-                                    }}
-                                    className={`px-3 py-2 rounded-lg text-xs font-bold transition-all flex items-center space-x-1.5 ${
-                                        loudAudioMode
-                                            ? "bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-black shadow-lg shadow-orange-500/30 ring-2 ring-amber-300"
-                                            : "bg-gray-800 hover:bg-gray-700 text-gray-400 border border-gray-700"
-                                    }`}
-                                    title="Best Loud Audio Mode (L)"
-                                >
-                                    <Megaphone className={`w-4 h-4 ${loudAudioMode ? "text-black" : "text-gray-400"}`} />
-                                    <span>{loudAudioMode ? "LOUD MODE" : "LOUD OFF"}</span>
-                                </button>
+                                <div className="h-6 w-px bg-white/10 shrink-0" />
 
-                                <button
-                                    onClick={() => setShowAudioSettings(true)}
-                                    className="p-3 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-cyan-300 hover:text-white transition-colors relative"
-                                    title="Audio Speaker & Voice Settings"
-                                >
-                                    <Headphones className="w-5 h-5" />
-                                    {audioSpeakerEnabled && (
-                                        <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-cyan-400 rounded-full animate-ping" />
-                                    )}
-                                </button>
-
-                                <div className="h-8 w-px bg-gray-700 mx-1" />
-
-                                <div className="flex space-x-1">
+                                {/* Active Script Card with Edit & Library quick actions */}
+                                <div className="flex items-center space-x-1.5 px-3 py-1 bg-gray-900/90 border border-gray-800 hover:border-gray-700 rounded-xl transition-all min-w-0 max-w-[280px]">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] shrink-0" />
                                     <button
-                                        onClick={() => startCountdown(3)}
-                                        className="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm transition-colors"
+                                        onClick={() => {
+                                            setEditorText(content);
+                                            setEditorScriptTitle(title);
+                                            setShowScriptEditor(true);
+                                        }}
+                                        className="text-xs font-semibold text-gray-200 hover:text-cyan-300 truncate text-left transition-colors"
+                                        title={`Active Script: ${title} (Click to Edit)`}
                                     >
-                                        3s
+                                        {title}
                                     </button>
                                     <button
-                                        onClick={() => startCountdown(5)}
-                                        className="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm transition-colors"
+                                        onClick={() => {
+                                            setEditorText(content);
+                                            setEditorScriptTitle(title);
+                                            setShowScriptEditor(true);
+                                        }}
+                                        className="p-1 hover:bg-cyan-500/10 text-gray-400 hover:text-cyan-300 rounded transition-colors shrink-0"
+                                        title="Edit Script (E)"
+                                        aria-label="Edit script content"
                                     >
-                                        5s
+                                        <Edit3 className="w-3.5 h-3.5" />
                                     </button>
+                                    <button
+                                        onClick={() => setShowLibrary(true)}
+                                        className="p-1 hover:bg-purple-500/10 text-gray-400 hover:text-purple-300 rounded transition-colors shrink-0"
+                                        title="Open Script Library (B)"
+                                        aria-label="Open script library"
+                                    >
+                                        <BookOpen className="w-3.5 h-3.5" />
+                                    </button>
+                                    {onUpload && (
+                                        <label className="p-1 hover:bg-emerald-500/10 text-gray-400 hover:text-emerald-300 rounded transition-colors cursor-pointer shrink-0" title="Upload .txt">
+                                            <Upload className="w-3.5 h-3.5" />
+                                            <input
+                                                type="file"
+                                                accept=".txt,text/plain"
+                                                onChange={onUpload}
+                                                className="hidden"
+                                            />
+                                        </label>
+                                    )}
+                                    {onSave && (
+                                        <button
+                                            onClick={onSave}
+                                            className="p-1 hover:bg-amber-500/10 text-gray-400 hover:text-amber-300 rounded transition-colors shrink-0"
+                                            title="Save Script"
+                                        >
+                                            <Save className="w-3.5 h-3.5" />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
 
-                            <div className="flex items-center space-x-6">
-                                <div className="flex items-center space-x-2">
-                                    <Settings className="w-5 h-5 text-gray-300" />
-                                    <label className="text-sm text-gray-300">Speed:</label>
-                                    <input
-                                        type="range"
-                                        min="5"
-                                        max="100"
-                                        value={speed}
-                                        onChange={(e) => setSpeed(Number(e.target.value))}
-                                        className="w-32"
-                                    />
-                                    <span className="text-sm text-gray-300 w-12 font-mono">{speed}</span>
+                            {/* ZONE 2: CENTER - Master Broadcast Transport Deck */}
+                            <div className="flex items-center justify-center shrink-0">
+                                <div className="flex items-center space-x-2 bg-gray-900/90 backdrop-blur-md border border-white/10 rounded-full px-3 py-1 shadow-2xl">
+                                    {/* Restart */}
+                                    <button
+                                        onClick={resetPosition}
+                                        className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+                                        title="Restart to Beginning (R)"
+                                        aria-label="Reset position"
+                                    >
+                                        <RotateCcw className="w-4 h-4" />
+                                    </button>
+
+                                    {/* 3s Countdown Delay */}
+                                    <button
+                                        onClick={() => startCountdown(3)}
+                                        className="flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/5 hover:bg-cyan-500/15 text-gray-300 hover:text-cyan-300 border border-white/5 hover:border-cyan-500/30 transition-all hover:scale-105"
+                                        title="Start with 3-second countdown delay"
+                                    >
+                                        <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                                        <span>3s Delay</span>
+                                    </button>
+
+                                    {/* HERO PLAY/PAUSE BUTTON */}
+                                    <button
+                                        onClick={() => {
+                                            setIsPlaying(!isPlaying);
+                                            setShowSectionPause(false);
+                                        }}
+                                        className={`relative w-11 h-11 rounded-full flex items-center justify-center font-bold transition-all duration-200 shadow-lg ${
+                                            isPlaying
+                                                ? "bg-gradient-to-tr from-amber-500 to-orange-500 text-gray-950 shadow-orange-500/30 hover:scale-105 active:scale-95"
+                                                : "bg-gradient-to-tr from-cyan-400 via-teal-400 to-sky-400 text-gray-950 shadow-cyan-400/40 hover:scale-108 active:scale-95"
+                                        }`}
+                                        title={isPlaying ? "Pause (Space)" : "Play (Space)"}
+                                        aria-label={isPlaying ? "Pause teleprompter" : "Play teleprompter"}
+                                    >
+                                        {isPlaying ? (
+                                            <Pause className="w-5 h-5 fill-current" />
+                                        ) : (
+                                            <Play className="w-5 h-5 fill-current ml-0.5" />
+                                        )}
+                                    </button>
+
+                                    {/* Save Bookmark */}
+                                    <button
+                                        onClick={savePosition}
+                                        className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+                                        title="Bookmark Current Spot (S)"
+                                        aria-label="Save bookmark position"
+                                    >
+                                        <Bookmark className="w-4 h-4" />
+                                    </button>
+
+                                    <div className="h-5 w-px bg-white/10" />
+
+                                    {/* Monospace Digital Broadcast Clock */}
+                                    <div className="flex items-center space-x-2 px-2.5 py-1 bg-black/40 border border-white/5 rounded-full" title="Elapsed Time">
+                                        <span
+                                            className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                                                isPlaying
+                                                    ? "bg-emerald-400 shadow-[0_0_8px_#34d399] animate-pulse"
+                                                    : "bg-gray-600"
+                                            }`}
+                                        />
+                                        <span className="font-mono text-xs font-bold text-gray-200 tracking-wider">
+                                            {formatTime(elapsedTime)}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* ZONE 3: RIGHT - Precision Tuning & Studio Tools */}
+                            <div className="flex items-center space-x-2 justify-end shrink-0">
+                                {/* Speed Stepper */}
+                                <div className="flex items-center space-x-1 px-2.5 py-1 bg-gray-900/90 border border-gray-800 hover:border-gray-700 rounded-xl" title="Prompter Scroll Speed (WPM)">
+                                    <Zap className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                                    <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider hidden xl:inline">Speed</span>
+                                    <button
+                                        onClick={() => adjustSpeed(-5)}
+                                        className="w-5 h-5 rounded bg-white/5 hover:bg-cyan-500/20 text-gray-300 hover:text-cyan-300 flex items-center justify-center text-xs font-bold transition-colors"
+                                        title="Decrease speed"
+                                        aria-label="Decrease speed"
+                                    >
+                                        −
+                                    </button>
+                                    <span className="font-mono text-xs font-bold text-gray-200 w-6 text-center">{speed}</span>
+                                    <button
+                                        onClick={() => adjustSpeed(5)}
+                                        className="w-5 h-5 rounded bg-white/5 hover:bg-cyan-500/20 text-gray-300 hover:text-cyan-300 flex items-center justify-center text-xs font-bold transition-colors"
+                                        title="Increase speed"
+                                        aria-label="Increase speed"
+                                    >
+                                        +
+                                    </button>
                                 </div>
 
-                                <div className="flex items-center space-x-2">
-                                    <label className="text-sm text-gray-300">Font:</label>
-                                    <input
-                                        type="range"
-                                        min="12"
-                                        max="72"
-                                        value={fontSize}
-                                        onChange={(e) => setFontSize(Number(e.target.value))}
-                                        className="w-32"
-                                    />
-                                    <span className="text-sm text-gray-300 w-12 font-mono">{fontSize}px</span>
+                                {/* Font Size Stepper */}
+                                <div className="flex items-center space-x-1 px-2.5 py-1 bg-gray-900/90 border border-gray-800 hover:border-gray-700 rounded-xl" title="Text Font Size">
+                                    <span className="text-xs font-bold text-purple-400 mr-0.5">Aa</span>
+                                    <button
+                                        onClick={() => adjustFontSize(-2)}
+                                        className="w-5 h-5 rounded bg-white/5 hover:bg-purple-500/20 text-gray-300 hover:text-purple-300 flex items-center justify-center text-xs font-bold transition-colors"
+                                        title="Decrease font size"
+                                        aria-label="Decrease font size"
+                                    >
+                                        −
+                                    </button>
+                                    <span className="font-mono text-xs font-bold text-gray-200 w-8 text-center">{fontSize}px</span>
+                                    <button
+                                        onClick={() => adjustFontSize(2)}
+                                        className="w-5 h-5 rounded bg-white/5 hover:bg-purple-500/20 text-gray-300 hover:text-purple-300 flex items-center justify-center text-xs font-bold transition-colors"
+                                        title="Increase font size"
+                                        aria-label="Increase font size"
+                                    >
+                                        +
+                                    </button>
                                 </div>
 
-                                <div className="flex items-center space-x-2">
-                                    <Palette className="w-5 h-5 text-gray-300" />
+                                {/* Audio Speaker & Voice Guide Toggle */}
+                                <div className="flex items-center space-x-1">
+                                    <button
+                                        onClick={() => {
+                                            const next = !audioSpeakerEnabled;
+                                            setAudioSpeakerEnabled(next);
+                                            localStorage.setItem("teleprompter_audio_speaker", String(next));
+                                            if (next && loudAudioMode) playAudioChime(true);
+                                        }}
+                                        className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                                            audioSpeakerEnabled
+                                                ? "bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.2)]"
+                                                : "bg-gray-900/90 border border-gray-800 text-gray-400 hover:text-gray-200 hover:border-gray-700"
+                                        }`}
+                                        title="Voice Guide / Audio Speaker (A)"
+                                    >
+                                        {audioSpeakerEnabled ? (
+                                            <Volume2 className="w-3.5 h-3.5 text-cyan-400" />
+                                        ) : (
+                                            <VolumeX className="w-3.5 h-3.5 text-gray-400" />
+                                        )}
+                                        <span className="hidden xl:inline">{audioSpeakerEnabled ? "Voice ON" : "Voice OFF"}</span>
+                                        {audioSpeakerEnabled && isSpeaking && isPlaying && (
+                                            <span className="flex items-center space-x-0.5 ml-0.5">
+                                                <span className="w-1 h-2 bg-cyan-400 animate-soundwave-1 rounded-full" />
+                                                <span className="w-1 h-3 bg-cyan-400 animate-soundwave-2 rounded-full" />
+                                                <span className="w-1 h-1.5 bg-cyan-400 animate-soundwave-3 rounded-full" />
+                                            </span>
+                                        )}
+                                    </button>
+                                    <button
+                                        onClick={() => setShowAudioSettings(true)}
+                                        className="p-2 bg-gray-900/90 border border-gray-800 hover:border-gray-700 rounded-xl text-cyan-400 hover:text-white transition-colors"
+                                        title="Voice & Loud Mode Settings"
+                                        aria-label="Open voice settings"
+                                    >
+                                        <Headphones className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
+
+                                {/* Quick Toggles: Mirror, Theme, A11y, Fullscreen, Collapse */}
+                                <div className="flex items-center space-x-1 border-l border-white/10 pl-2">
+                                    <button
+                                        onClick={() => setIsMirrored(!isMirrored)}
+                                        className={`p-2 rounded-xl transition-all ${
+                                            isMirrored
+                                                ? "bg-cyan-500/20 border border-cyan-500/40 text-cyan-300"
+                                                : "bg-gray-900/90 border border-gray-800 hover:border-gray-700 text-gray-400 hover:text-white"
+                                        }`}
+                                        title="Mirror Horizontal Flip (M) - For Beam Splitter Glass"
+                                        aria-label="Mirror text horizontally"
+                                    >
+                                        <Monitor className="w-3.5 h-3.5" />
+                                    </button>
+
                                     <select
                                         value={theme}
                                         onChange={(e) => setTheme(e.target.value as Theme)}
-                                        className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1 text-sm text-gray-300"
+                                        className="bg-gray-900/90 border border-gray-800 hover:border-gray-700 rounded-xl px-2 py-1.5 text-xs text-gray-300 outline-none cursor-pointer hidden lg:block"
+                                        aria-label="Color theme"
                                     >
-                                        <option value="dark">Dark</option>
-                                        <option value="light">Light</option>
-                                        <option value="sepia">Sepia</option>
-                                        <option value="blue">Blue</option>
+                                        <option value="dark">⚫ Dark OLED</option>
+                                        <option value="light">⚪ Light</option>
+                                        <option value="sepia">📜 Sepia</option>
+                                        <option value="blue">🔵 Studio Blue</option>
+                                        <option value="contrast">🟡 WCAG AAA</option>
                                     </select>
-                                </div>
-                            </div>
 
-                            <div className="flex items-center space-x-2">
-                                <div className="text-sm text-gray-300 font-mono mr-2">
-                                    {formatTime(elapsedTime)}
+                                    <button
+                                        onClick={() => setShowAccessibilityModal(true)}
+                                        className="p-2 bg-gray-900/90 border border-gray-800 hover:border-gray-700 rounded-xl text-amber-400 hover:text-amber-300 transition-colors"
+                                        title="Accessibility, Font & Reading Guide"
+                                        aria-label="Open accessibility settings"
+                                    >
+                                        <Eye className="w-3.5 h-3.5" />
+                                    </button>
+
+                                    <button
+                                        onClick={() => setShowShortcutsModal(true)}
+                                        className="p-2 bg-gray-900/90 border border-gray-800 hover:border-gray-700 rounded-xl text-gray-400 hover:text-white transition-colors"
+                                        title="Keyboard Shortcuts (? or H)"
+                                        aria-label="Open keyboard shortcuts"
+                                    >
+                                        <HelpCircle className="w-3.5 h-3.5" />
+                                    </button>
+
+                                    <button
+                                        onClick={() => setShowTrustModal(true)}
+                                        className="p-2 bg-gray-900/90 border border-gray-800 hover:border-gray-700 rounded-xl text-emerald-400 hover:text-emerald-300 transition-colors"
+                                        title="Web Trust, Privacy & Legal Compliance (T)"
+                                        aria-label="Open trust and compliance center"
+                                    >
+                                        <Shield className="w-3.5 h-3.5" />
+                                    </button>
+
+                                    <button
+                                        onClick={toggleFullscreen}
+                                        className="p-2 bg-gray-900/90 border border-gray-800 hover:border-gray-700 rounded-xl text-gray-400 hover:text-white transition-colors"
+                                        title="Fullscreen (F)"
+                                        aria-label="Toggle fullscreen"
+                                    >
+                                        {isFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
+                                    </button>
+
+                                    <button
+                                        onClick={() => setShowControls(false)}
+                                        className="p-2 bg-gray-900/90 border border-gray-800 hover:border-gray-700 rounded-xl text-gray-400 hover:text-white transition-colors"
+                                        title="Hide Controls (C)"
+                                        aria-label="Hide controls"
+                                    >
+                                        <ChevronUp className="w-3.5 h-3.5" />
+                                    </button>
                                 </div>
-                                <button
-                                    onClick={() => setIsMirrored(!isMirrored)}
-                                    className={`p-2 rounded-lg transition-colors ${isMirrored ? "bg-blue-600" : "bg-gray-700 hover:bg-gray-600"
-                                        }`}
-                                    title="Mirror (M)"
-                                >
-                                    <Monitor className="w-5 h-5" />
-                                </button>
-                                <button
-                                    onClick={toggleFullscreen}
-                                    className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-                                    title="Fullscreen (F)"
-                                >
-                                    {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
-                                </button>
-                                <button
-                                    onClick={() => setShowControls(false)}
-                                    className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-                                    title="Hide controls (C)"
-                                >
-                                    <ChevronUp className="w-5 h-5" />
-                                </button>
                             </div>
                         </div>
                     </div>
@@ -1209,6 +1775,21 @@ export default function Teleprompter({
             {/* Reading Line */}
             <div className={`fixed top-1/2 left-0 right-0 h-1 ${currentTheme.line} opacity-70 z-40 pointer-events-none`} />
 
+            {/* Reading Focus Guide Ruler (WCAG AAA reading aid) */}
+            {showReadingGuide && (
+                <div 
+                    className="fixed top-1/2 left-0 right-0 -translate-y-1/2 pointer-events-none z-30 transition-all duration-200"
+                    style={{
+                        height: `${Math.max(48, fontSize * 2.2)}px`,
+                        backgroundColor: theme === 'contrast' ? 'rgba(255, 230, 0, 0.16)' : 'rgba(56, 189, 248, 0.12)',
+                        borderTop: theme === 'contrast' ? '2px solid rgba(255, 230, 0, 0.8)' : '2px solid rgba(56, 189, 248, 0.6)',
+                        borderBottom: theme === 'contrast' ? '2px solid rgba(255, 230, 0, 0.8)' : '2px solid rgba(56, 189, 248, 0.6)',
+                        boxShadow: theme === 'contrast' ? '0 0 25px rgba(255, 230, 0, 0.3)' : '0 0 25px rgba(56, 189, 248, 0.25)',
+                        opacity: guideOpacity,
+                    }}
+                />
+            )}
+
             {/* Dimming Overlay for Read Text (above the green line) */}
             <div
                 className="fixed top-0 left-0 right-0 z-30 pointer-events-none"
@@ -1217,7 +1798,8 @@ export default function Teleprompter({
                     background: `linear-gradient(to bottom, ${theme === 'dark' ? 'rgba(0, 0, 0, 0.6)' :
                             theme === 'light' ? 'rgba(255, 255, 255, 0.6)' :
                                 theme === 'sepia' ? 'rgba(244, 236, 216, 0.6)' :
-                                    'rgba(23, 37, 84, 0.6)'
+                                    theme === 'contrast' ? 'rgba(0, 0, 0, 0.75)' :
+                                        'rgba(23, 37, 84, 0.6)'
                         } 0%, transparent 100%)`
                 }}
             />
@@ -1234,12 +1816,9 @@ export default function Teleprompter({
                     }}
                 >
                     <div
-                        className="leading-relaxed select-none space-y-6"
+                        className={`${fontClass} ${alignClass} ${leadingClass} select-none space-y-6`}
                         style={{
                             fontSize: `${fontSize}px`,
-                            fontFamily: "system-ui, -apple-system, sans-serif",
-                            lineHeight: "1.8",
-                            textAlign: "left",
                         }}
                     >
                         {scriptData.paragraphs.length > 0 ? (
@@ -1333,127 +1912,336 @@ export default function Teleprompter({
                 </div>
             )}
 
-            {/* Keyboard Shortcuts */}
+            {/* All-In-One Opening Page Workspace Cockpit - First Fold / No Unnecessary Space / No Scroll */}
             {!isPlaying && position === 0 && (
-                <div className="hidden md:block fixed bottom-20 right-4 bg-gray-900/90 border border-gray-700 rounded-lg p-4 text-xs text-gray-400 z-50">
-                    <div className="font-semibold text-gray-300 mb-2">Keyboard Shortcuts</div>
-                    <div className="space-y-1">
-                        <div><kbd className="bg-gray-800 px-2 py-1 rounded">Space</kbd> Play/Pause</div>
-                        <div><kbd className="bg-gray-800 px-2 py-1 rounded">↑/↓</kbd> Speed</div>
-                        <div><kbd className="bg-gray-800 px-2 py-1 rounded">A</kbd> Audio Speaker</div>
-                        <div><kbd className="bg-gray-800 px-2 py-1 rounded">L</kbd> Loud Audio Mode</div>
-                        <div><kbd className="bg-gray-800 px-2 py-1 rounded">R</kbd> Reset</div>
-                        <div><kbd className="bg-gray-800 px-2 py-1 rounded">S</kbd> Save Position</div>
-                        <div><kbd className="bg-gray-800 px-2 py-1 rounded">F</kbd> Fullscreen</div>
-                        <div><kbd className="bg-gray-800 px-2 py-1 rounded">M</kbd> Mirror</div>
-                        <div><kbd className="bg-gray-800 px-2 py-1 rounded">C</kbd> Hide Controls</div>
-                    </div>
-                </div>
-            )}
+                <div className="fixed inset-0 bg-[#070c18] flex items-center justify-center z-50 p-3 sm:p-4 overflow-hidden select-none">
+                    <div className="bg-[#0b1322] border border-[#1e2c45] rounded-3xl p-4 sm:p-5 md:p-6 max-w-4xl w-full shadow-[0_25px_80px_rgba(0,0,0,0.85)] animate-scaleIn flex flex-col gap-3 sm:gap-3.5 my-auto overflow-hidden">
+                        {/* 1. Header Row (Title & Stats) */}
+                        <div className="flex items-center justify-between gap-3 border-b border-[#1e2c45]/80 pb-2.5 shrink-0">
+                            <div className="flex items-center space-x-2.5 min-w-0">
+                                <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 bg-cyan-950/60 border border-cyan-500/40 rounded-full text-cyan-300 text-[10px] font-extrabold uppercase tracking-wider shrink-0">
+                                    <Sparkles className="w-2.5 h-2.5 text-cyan-400" />
+                                    <span>Studio Pro</span>
+                                </span>
+                                <h1 className="text-base sm:text-lg md:text-xl font-black text-white truncate">
+                                    {title.replace(/^[\p{Emoji}\s]+/u, '').trim() || title}
+                                </h1>
+                            </div>
+                            <div className="flex items-center space-x-2 text-[11px] font-medium shrink-0">
+                                <span className="flex items-center space-x-1 px-2.5 py-1 rounded-full bg-[#131d2e] border border-[#1e2c45] text-gray-300">
+                                    <FileText className="w-3 h-3 text-cyan-400" />
+                                    <span>{totalWords} words</span>
+                                </span>
+                                <span className="flex items-center space-x-1 px-2.5 py-1 rounded-full bg-[#131d2e] border border-[#1e2c45] text-gray-300">
+                                    <Clock className="w-3 h-3 text-cyan-400" />
+                                    <span>~{formatTime(estimatedTotalTime)}</span>
+                                </span>
+                                <span className="flex items-center space-x-1 px-2.5 py-1 rounded-full bg-[#131d2e] border border-[#1e2c45] text-amber-300">
+                                    <Zap className="w-3 h-3 text-amber-400" />
+                                    <span>130 WPM</span>
+                                </span>
+                            </div>
+                        </div>
 
-            {/* Instructions Overlay */}
-            {!isPlaying && position === 0 && (
-                <div className="fixed inset-0 bg-gray-950 bg-opacity-95 flex items-center justify-center z-50 p-4">
-                    <div className="bg-gray-900 border-2 border-gray-700 rounded-2xl p-6 md:p-10 max-w-2xl text-center space-y-6 max-h-[90vh] overflow-y-auto">
-                        <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-400 via-teal-400 to-blue-500 bg-clip-text text-transparent">
-                            {title}
-                        </h1>
-
-                        {/* Audio Speaker & Loud Audio Mode Card */}
-                        <div className="bg-gradient-to-r from-cyan-950/60 via-blue-950/60 to-purple-950/60 border-2 border-cyan-500/40 rounded-2xl p-5 text-left shadow-xl">
-                            <div className="flex items-center justify-between mb-3">
-                                <div className="flex items-center space-x-2.5">
-                                    <div className="w-10 h-10 bg-cyan-500/20 border border-cyan-500/40 rounded-xl flex items-center justify-center">
-                                        <Volume2 className="w-5 h-5 text-cyan-400" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-base font-bold text-white flex items-center space-x-2">
-                                            <span>Audio Speaker & Voice Guide</span>
-                                            {loudAudioMode && (
-                                                <span className="bg-gradient-to-r from-amber-500 to-orange-500 text-black text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase">
-                                                    Loud Audio Mode
-                                                </span>
-                                            )}
-                                        </h3>
-                                        <p className="text-xs text-gray-300">
-                                            Hear how to speak your script with real-time text-to-speech narration
-                                        </p>
+                        {/* 2. Welcome & 3-Step Rehearsal Workflow Banner (Fills Void & Explains Flow) */}
+                        <div className="bg-gradient-to-r from-cyan-950/25 via-[#0e1726] to-blue-950/25 border border-cyan-500/25 rounded-2xl p-2.5 sm:p-3 text-left shadow-sm">
+                            <div className="flex items-center justify-between flex-wrap gap-2 mb-1.5">
+                                <div className="flex items-center space-x-2">
+                                    <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                                    <span className="text-xs font-bold text-white tracking-wide">
+                                        All-In-One Studio Teleprompter &amp; Loud Voice Coach
+                                    </span>
+                                </div>
+                                <span className="text-[10px] text-gray-400 font-medium hidden sm:inline">
+                                    Rehearse with natural pauses before recording
+                                </span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                                <div className="flex items-center space-x-2 bg-black/40 border border-white/5 rounded-xl px-2.5 py-1.5">
+                                    <span className="w-4 h-4 rounded-full bg-cyan-500/20 text-cyan-300 font-bold flex items-center justify-center text-[10px] shrink-0">1</span>
+                                    <div className="min-w-0">
+                                        <strong className="text-white block text-[11px] truncate">Select or Edit Script</strong>
+                                        <span className="text-[10px] text-gray-400">Choose below or press <kbd className="px-1 py-0.2 bg-white/10 rounded text-[9px] font-mono text-cyan-300">E</kbd></span>
                                     </div>
                                 </div>
-                                <button
-                                    onClick={() => {
-                                        const next = !audioSpeakerEnabled;
-                                        setAudioSpeakerEnabled(next);
-                                        localStorage.setItem("teleprompter_audio_speaker", String(next));
-                                        if (next && loudAudioMode) playAudioChime(true);
-                                    }}
-                                    className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all shadow-lg ${
-                                        audioSpeakerEnabled
-                                            ? "bg-cyan-500 text-black hover:bg-cyan-400"
-                                            : "bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-700"
-                                    }`}
-                                >
-                                    {audioSpeakerEnabled ? "ENABLED" : "ENABLE"}
-                                </button>
+                                <div className="flex items-center space-x-2 bg-black/40 border border-white/5 rounded-xl px-2.5 py-1.5">
+                                    <span className="w-4 h-4 rounded-full bg-cyan-500/20 text-cyan-300 font-bold flex items-center justify-center text-[10px] shrink-0">2</span>
+                                    <div className="min-w-0">
+                                        <strong className="text-white block text-[11px] truncate">Rehearse with Voice</strong>
+                                        <span className="text-[10px] text-gray-400">Pacing guide &amp; loud boost</span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center space-x-2 bg-black/40 border border-white/5 rounded-xl px-2.5 py-1.5">
+                                    <span className="w-4 h-4 rounded-full bg-cyan-500/20 text-cyan-300 font-bold flex items-center justify-center text-[10px] shrink-0">3</span>
+                                    <div className="min-w-0">
+                                        <strong className="text-white block text-[11px] truncate">Present &amp; Record</strong>
+                                        <span className="text-[10px] text-gray-400">Press <kbd className="px-1 py-0.2 bg-white/10 rounded text-[9px] font-mono text-cyan-300">Space</kbd> or countdown</span>
+                                    </div>
+                                </div>
                             </div>
+                        </div>
 
-                            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-cyan-500/20 text-xs">
-                                <div className="flex items-center space-x-2">
-                                    <Megaphone className="w-4 h-4 text-amber-400" />
-                                    <span className="text-gray-300">Loud Mode:</span>
+                        {/* 3. Middle 2-Column Section */}
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 min-h-0">
+                            {/* LEFT COLUMN: STARTER TEMPLATES + TOOLS (7 cols) */}
+                            <div className="md:col-span-7 flex flex-col justify-between space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center space-x-1.5">
+                                        <Rocket className="w-3 h-3 text-cyan-400" />
+                                        <span>STARTER TEMPLATES</span>
+                                    </span>
+                                    <span className="text-[10px] text-gray-500 font-medium">Click to load instantly</span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                    {QUICK_TEMPLATES.map((tmpl) => {
+                                        const isSelected = 
+                                            (tmpl.id === "youtube_video" && (title.includes("YouTube") || title.includes("High-Engagement"))) ||
+                                            (tmpl.id === "investor_pitch" && (title.includes("Investor") || title.includes("Pitch"))) ||
+                                            (tmpl.id === "keynote_speech" && (title.includes("Keynote") || title.includes("Inspiring"))) ||
+                                            (tmpl.id === "wedding_toast" && (title.includes("Toast") || title.includes("Heartfelt")));
+                                        
+                                        let IconComponent = Rocket;
+                                        let iconBg = "bg-teal-500/10 border-teal-500/20 text-teal-400";
+                                        if (tmpl.id === "keynote_speech") {
+                                            IconComponent = Mic;
+                                            iconBg = "bg-purple-500/10 border-purple-500/20 text-purple-400";
+                                        } else if (tmpl.id === "youtube_video") {
+                                            IconComponent = Video;
+                                            iconBg = "bg-rose-500/10 border-rose-500/20 text-rose-400";
+                                        } else if (tmpl.id === "wedding_toast") {
+                                            IconComponent = Heart;
+                                            iconBg = "bg-amber-500/10 border-amber-500/20 text-amber-400";
+                                        }
+
+                                        return (
+                                            <button
+                                                key={tmpl.id}
+                                                onClick={() => handleSelectTemplate(tmpl.id)}
+                                                className={`p-2 rounded-xl text-left transition-all flex items-center space-x-2.5 group cursor-pointer ${
+                                                    isSelected
+                                                        ? "bg-cyan-950/40 border-2 border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.25)]"
+                                                        : "bg-[#0e1726] hover:bg-[#142036] border border-[#1e2c45]"
+                                                }`}
+                                            >
+                                                <div className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 ${iconBg}`}>
+                                                    <IconComponent className="w-3.5 h-3.5" />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="text-xs font-bold text-white group-hover:text-cyan-300 truncate">
+                                                        {tmpl.title.replace(/^[\p{Emoji}\s]+/u, '').trim()}
+                                                    </div>
+                                                    <div className="text-[10px] text-gray-400 truncate">
+                                                        {tmpl.category}
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Quick Tools 4-Grid in Left Column */}
+                                <div className="grid grid-cols-4 gap-2 pt-0.5">
                                     <button
                                         onClick={() => {
-                                            const next = !loudAudioMode;
-                                            setLoudAudioMode(next);
-                                            localStorage.setItem("teleprompter_loud_mode", String(next));
-                                            if (next) playAudioChime(true);
+                                            setEditorText(content);
+                                            setEditorScriptTitle(title);
+                                            setShowScriptEditor(true);
                                         }}
-                                        className={`font-bold transition-colors ${
-                                            loudAudioMode ? "text-amber-400 underline" : "text-gray-400"
-                                        }`}
+                                        className="p-1.5 bg-[#0e1726] hover:bg-[#142036] border border-[#1e2c45] rounded-xl flex flex-col items-center justify-center text-center transition-all group cursor-pointer"
                                     >
-                                        {loudAudioMode ? "100% MAX BOOST (ON)" : "STANDARD (OFF)"}
+                                        <Edit3 className="w-3.5 h-3.5 text-cyan-400 mb-0.5" />
+                                        <span className="text-[10px] font-bold text-white group-hover:text-cyan-300">Edit</span>
+                                        <span className="text-[9px] text-gray-500 font-mono">E</span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setShowLibrary(true)}
+                                        className="p-1.5 bg-[#0e1726] hover:bg-[#142036] border border-[#1e2c45] rounded-xl flex flex-col items-center justify-center text-center transition-all group cursor-pointer"
+                                    >
+                                        <BookOpen className="w-3.5 h-3.5 text-purple-400 mb-0.5" />
+                                        <span className="text-[10px] font-bold text-white group-hover:text-purple-300">Library</span>
+                                        <span className="text-[9px] text-gray-500 font-mono">B</span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setShowAccessibilityModal(true)}
+                                        className="p-1.5 bg-[#0e1726] hover:bg-[#142036] border border-[#1e2c45] rounded-xl flex flex-col items-center justify-center text-center transition-all group cursor-pointer"
+                                    >
+                                        <Eye className="w-3.5 h-3.5 text-amber-400 mb-0.5" />
+                                        <span className="text-[10px] font-bold text-white group-hover:text-amber-300">Contrast</span>
+                                        <span className="text-[9px] text-gray-500 font-mono">{theme === 'contrast' ? 'AAA' : 'OLED'}</span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => setShowShortcutsModal(true)}
+                                        className="p-1.5 bg-[#0e1726] hover:bg-[#142036] border border-[#1e2c45] rounded-xl flex flex-col items-center justify-center text-center transition-all group cursor-pointer"
+                                    >
+                                        <Keyboard className="w-3.5 h-3.5 text-blue-400 mb-0.5" />
+                                        <span className="text-[10px] font-bold text-white group-hover:text-blue-300">Shortcuts</span>
+                                        <span className="text-[9px] text-gray-500 font-mono">?</span>
                                     </button>
                                 </div>
-                                <button
-                                    onClick={testAudioSpeaker}
-                                    disabled={audioTestPlaying}
-                                    className="px-3 py-1 bg-cyan-600/30 hover:bg-cyan-600/50 border border-cyan-500/40 text-cyan-300 rounded-lg font-semibold flex items-center space-x-1.5 transition-colors"
-                                >
-                                    <span>{audioTestPlaying ? "Testing Voice..." : "🔊 Test Loud Speaker"}</span>
-                                </button>
+                            </div>
+
+                            {/* RIGHT COLUMN: VOICE GUIDE CARD (5 cols) */}
+                            <div className="md:col-span-5 bg-[#0c1628] border border-cyan-500/30 rounded-2xl p-3 flex flex-col justify-between shadow-lg space-y-2">
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center space-x-2">
+                                        <div className="w-8 h-8 bg-cyan-500/10 border border-cyan-500/30 rounded-lg flex items-center justify-center text-cyan-400 shrink-0">
+                                            <Volume2 className="w-4 h-4" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-xs font-bold text-white">Voice Guide</h3>
+                                            <p className="text-[10px] text-gray-300">Cadence coaching & pauses</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Custom Switch Toggle */}
+                                    <button
+                                        onClick={() => {
+                                            const next = !audioSpeakerEnabled;
+                                            setAudioSpeakerEnabled(next);
+                                            localStorage.setItem("teleprompter_audio_speaker", String(next));
+                                            if (next && loudAudioMode) playAudioChime(true);
+                                        }}
+                                        className="flex items-center space-x-1.5 shrink-0 cursor-pointer"
+                                        aria-label="Toggle voice guide"
+                                    >
+                                        <div className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors duration-200 ${
+                                            audioSpeakerEnabled ? "bg-cyan-500 justify-end" : "bg-gray-800 border border-gray-700 justify-start"
+                                        }`}>
+                                            <div className={`w-3.5 h-3.5 rounded-full transition-transform duration-200 ${
+                                                audioSpeakerEnabled ? "bg-gray-950" : "bg-white"
+                                            }`} />
+                                        </div>
+                                        <span className={`text-[11px] font-bold ${audioSpeakerEnabled ? "text-cyan-300" : "text-gray-400"}`}>
+                                            {audioSpeakerEnabled ? "On" : "Off"}
+                                        </span>
+                                    </button>
+                                </div>
+
+                                {/* Volume Mode (Normal vs Best Loud Audio Mode) */}
+                                <div className="space-y-1 bg-[#080d18] border border-gray-800 rounded-xl p-2">
+                                    <div className="flex items-center justify-between text-[11px]">
+                                        <span className="flex items-center space-x-1 text-gray-300 font-medium">
+                                            <Megaphone className="w-3 h-3 text-amber-400" />
+                                            <span>Volume mode:</span>
+                                        </span>
+                                        <div className="bg-[#0b1322] border border-gray-700/80 rounded-lg p-0.5 flex items-center">
+                                            <button
+                                                onClick={() => {
+                                                    setLoudAudioMode(false);
+                                                    localStorage.setItem("teleprompter_loud_mode", "false");
+                                                }}
+                                                className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors ${
+                                                    !loudAudioMode ? "bg-cyan-900/60 text-cyan-300 border border-cyan-500/40" : "text-gray-400 hover:text-white"
+                                                }`}
+                                            >
+                                                Normal
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setLoudAudioMode(true);
+                                                    localStorage.setItem("teleprompter_loud_mode", "true");
+                                                    playAudioChime(true);
+                                                }}
+                                                className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors ${
+                                                    loudAudioMode ? "bg-gradient-to-r from-amber-500 to-orange-500 text-black font-extrabold" : "text-gray-400 hover:text-white"
+                                                }`}
+                                            >
+                                                Loud Boost
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {loudAudioMode && (
+                                        <div className="text-[10px] text-amber-300/90 font-medium">
+                                            ⚡ High-projection vocal audio active for noisy halls
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Test Speaker & Settings Action Row (Fixed Voice Settings typo) */}
+                                <div className="flex items-center gap-2 pt-1 border-t border-[#1e2c45]">
+                                    <button
+                                        onClick={() => setShowAudioSettings(true)}
+                                        className="flex-1 py-1.5 px-2 rounded-xl bg-[#131d2e] hover:bg-[#1c2a42] border border-gray-700/80 text-[11px] font-semibold text-gray-300 flex items-center justify-center space-x-1 transition-colors cursor-pointer"
+                                    >
+                                        <Headphones className="w-3 h-3 text-cyan-400" />
+                                        <span>Voice Settings</span>
+                                    </button>
+                                    <button
+                                        onClick={testAudioSpeaker}
+                                        disabled={audioTestPlaying}
+                                        className="flex-1 py-1.5 px-2 rounded-xl bg-cyan-950/40 hover:bg-cyan-900/60 border border-cyan-500/50 text-[11px] font-bold text-cyan-300 flex items-center justify-center space-x-1 transition-colors cursor-pointer"
+                                    >
+                                        <Volume2 className="w-3 h-3 text-cyan-400" />
+                                        <span>{audioTestPlaying ? "Testing..." : "Test Audio"}</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="space-y-2.5 text-left text-sm md:text-base text-gray-200">
-                            <p>✅ <strong className="text-white">Audio Speaker:</strong> Hear pronunciation & pacing as it scrolls</p>
-                            <p>✅ <strong className="text-white">Best Loud Audio Mode:</strong> 100% volume boost for clear projection</p>
-                            <p>✅ <strong className="text-white">Interactive Practice:</strong> Click any line to hear how to speak it</p>
-                            <p>✅ <strong className="text-white">WPM Pace Counter & Auto-Pause:</strong> Delivers confident pacing</p>
+                        {/* 4. Bottom Action Row + Trust Footer */}
+                        <div className="space-y-2 shrink-0 pt-2 border-t border-[#1e2c45]/80">
+                            <div className="flex flex-col sm:flex-row gap-2">
+                                <button
+                                    onClick={() => {
+                                        setPosition(0);
+                                        setElapsedTime(0);
+                                        setCurrentSentenceIndex(0);
+                                        setIsPlaying(true);
+                                        if (audioSpeakerEnabled && loudAudioMode) playAudioChime(true);
+                                    }}
+                                    className="flex-1 py-3 px-5 bg-gradient-to-r from-[#2563eb] via-[#0284c7] to-[#10b981] hover:brightness-110 text-white font-black text-sm rounded-xl shadow-lg shadow-cyan-500/20 flex items-center justify-center space-x-2 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                                >
+                                    <Play className="w-4 h-4 fill-current" />
+                                    <span>Start teleprompter</span>
+                                    <span className="px-1.5 py-0.2 bg-white/20 rounded text-[10px] font-mono font-bold text-white">
+                                        Space
+                                    </span>
+                                </button>
+                                <button
+                                    onClick={() => startCountdown(3)}
+                                    className="py-3 px-4 rounded-xl bg-[#111927] hover:bg-[#182336] border border-[#1e2c45] text-gray-200 font-bold text-xs flex items-center justify-center space-x-1.5 transition-all hover:scale-[1.01] cursor-pointer"
+                                >
+                                    <Clock className="w-3.5 h-3.5 text-gray-400" />
+                                    <span>3s countdown</span>
+                                </button>
+                                <button
+                                    onClick={() => startCountdown(5)}
+                                    className="py-3 px-4 rounded-xl bg-[#111927] hover:bg-[#182336] border border-[#1e2c45] text-gray-200 font-bold text-xs flex items-center justify-center space-x-1.5 transition-all hover:scale-[1.01] cursor-pointer"
+                                >
+                                    <Clock className="w-3.5 h-3.5 text-gray-400" />
+                                    <span>5s countdown</span>
+                                </button>
+                            </div>
+
+                            {/* Trust, Privacy & Developer Signature Footer (web-trust-and-compliance skill) */}
+                            <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-gray-400 pt-0.5">
+                                <div className="flex items-center space-x-2">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                                    <span className="text-gray-300 font-medium">100% Client-Side Prompter</span>
+                                    <span className="text-gray-600">•</span>
+                                    <span className="text-gray-400">Zero data leaves browser</span>
+                                </div>
+                                <div className="flex items-center space-x-3">
+                                    <button
+                                        onClick={() => setShowTrustModal(true)}
+                                        className="flex items-center space-x-1.5 text-cyan-400 hover:text-cyan-300 font-semibold transition-colors cursor-pointer"
+                                        aria-label="Open Trust and Compliance Center"
+                                    >
+                                        <Shield className="w-3.5 h-3.5 text-emerald-400" />
+                                        <span>Trust &amp; Legal Center</span>
+                                    </button>
+                                    <span className="text-gray-600">•</span>
+                                    <span className="text-gray-400">
+                                        By <a href="https://github.com/carthworks" target="_blank" rel="noopener noreferrer" className="text-amber-400 hover:underline">@carthworks</a>
+                                    </span>
+                                </div>
+                            </div>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                            <button
-                                onClick={() => {
-                                    setPosition(0);
-                                    setElapsedTime(0);
-                                    setWordsRead(0);
-                                    setCurrentSentenceIndex(0);
-                                    setIsPlaying(true);
-                                    if (audioSpeakerEnabled && loudAudioMode) playAudioChime(true);
-                                }}
-                                className="flex-1 px-6 md:px-8 py-3.5 bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 text-white rounded-xl font-bold shadow-xl hover:shadow-cyan-500/30 hover:scale-105 transition-all duration-300 flex items-center justify-center space-x-2"
-                            >
-                                <Play className="w-5 h-5" />
-                                <span>{audioSpeakerEnabled ? "Start with Audio Speaker" : "Start Teleprompter"}</span>
-                            </button>
-                            <button
-                                onClick={() => startCountdown(5)}
-                                className="flex-1 px-6 md:px-8 py-3.5 bg-gray-700 hover:bg-gray-600 text-white rounded-xl font-semibold transition-all duration-300 flex items-center justify-center space-x-2"
-                            >
-                                <span>5s Countdown</span>
-                            </button>
-                        </div>
                     </div>
                 </div>
             )}
@@ -1789,6 +2577,840 @@ export default function Teleprompter({
                     </div>
                 </div>
             )}
+            {/* Script Editor Modal (E) */}
+            {showScriptEditor && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[115] p-4">
+                    <div className="bg-gray-900 border-2 border-cyan-500/40 rounded-3xl p-6 md:p-8 max-w-3xl w-full max-h-[92vh] flex flex-col shadow-2xl space-y-4 animate-scaleIn">
+                        {/* Header */}
+                        <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+                            <div className="flex items-center space-x-3">
+                                <div className="w-10 h-10 bg-cyan-500/20 border border-cyan-500/40 rounded-xl flex items-center justify-center text-cyan-400">
+                                    <Edit3 className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-white">In-Place Script Editor</h2>
+                                    <p className="text-xs text-gray-400">Edit, format, and structure your prompter script with cues</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowScriptEditor(false)}
+                                className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                                aria-label="Close editor"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {/* Title & Template Selector */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div className="sm:col-span-2">
+                                <label className="text-xs text-gray-400 font-semibold mb-1 block">Script Title</label>
+                                <input
+                                    type="text"
+                                    value={editorScriptTitle}
+                                    onChange={(e) => setEditorScriptTitle(e.target.value)}
+                                    placeholder="Enter speech or presentation title..."
+                                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs text-gray-400 font-semibold mb-1 block">Load Template</label>
+                                <select
+                                    onChange={(e) => {
+                                        if (e.target.value) handleSelectTemplate(e.target.value);
+                                    }}
+                                    defaultValue=""
+                                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-cyan-500"
+                                >
+                                    <option value="" disabled>Choose template...</option>
+                                    {QUICK_TEMPLATES.map((t) => (
+                                        <option key={t.id} value={t.id}>{t.title}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Quick Section Insertion Pills */}
+                        <div className="flex items-center space-x-1.5 overflow-x-auto py-1 text-xs text-gray-300">
+                            <span className="text-gray-400 font-semibold shrink-0">Insert Cue:</span>
+                            {["Intro", "The Problem", "Solution", "Key Takeaway", "Pause", "Conclusion"].map((cue) => (
+                                <button
+                                    key={cue}
+                                    onClick={() => handleInsertSectionTag(cue)}
+                                    className="px-2.5 py-1 bg-gray-800 hover:bg-cyan-950/60 border border-gray-700 hover:border-cyan-500/50 rounded-lg shrink-0 flex items-center space-x-1 transition-colors"
+                                >
+                                    <Plus className="w-3 h-3 text-cyan-400" />
+                                    <span>[{cue}]</span>
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Main Textarea */}
+                        <div className="flex-1 min-h-[260px] relative">
+                            <textarea
+                                value={editorText}
+                                onChange={(e) => setEditorText(e.target.value)}
+                                placeholder="Paste or type your script here... Use [Square Brackets] for auto-pausing section headers."
+                                className="w-full h-full min-h-[260px] bg-gray-950 border border-gray-800 rounded-2xl p-4 text-sm md:text-base text-gray-100 font-sans leading-relaxed resize-none focus:outline-none focus:border-cyan-500"
+                            />
+                        </div>
+
+                        {/* Footer Stats & Actions */}
+                        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-gray-800">
+                            <div className="flex items-center space-x-4 text-xs text-gray-400">
+                                <span>Words: <strong className="text-white">{editorText.split(/\s+/).filter(Boolean).length}</strong></span>
+                                <span>Chars: <strong className="text-white">{editorText.length}</strong></span>
+                                <span>Est. Duration: <strong className="text-white">{formatTime(Math.round((editorText.split(/\s+/).filter(Boolean).length / 120) * 60))}</strong></span>
+                            </div>
+
+                            <div className="flex items-center space-x-2">
+                                <button
+                                    onClick={() => {
+                                        setSaveTitleInput(editorScriptTitle);
+                                        setShowSaveModal(true);
+                                    }}
+                                    className="px-3.5 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-colors"
+                                >
+                                    <Bookmark className="w-3.5 h-3.5 text-purple-400" />
+                                    <span>Save to Library</span>
+                                </button>
+                                <button
+                                    onClick={() => handleExportTxt({ title: editorScriptTitle, content: editorText })}
+                                    className="px-3.5 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-colors"
+                                >
+                                    <Download className="w-3.5 h-3.5 text-green-400" />
+                                    <span>Export .txt</span>
+                                </button>
+                                <button
+                                    onClick={handleApplyEditor}
+                                    className="px-5 py-2 bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 text-white rounded-xl text-xs font-bold shadow-lg hover:shadow-cyan-500/30 hover:scale-105 transition-all flex items-center space-x-1.5"
+                                >
+                                    <Check className="w-4 h-4" />
+                                    <span>Apply to Prompter</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Script Library Modal (B) */}
+            {showLibrary && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[115] p-4">
+                    <div className="bg-gray-900 border-2 border-purple-500/40 rounded-3xl p-6 md:p-8 max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl space-y-4 animate-scaleIn">
+                        {/* Header */}
+                        <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+                            <div className="flex items-center space-x-3">
+                                <div className="w-10 h-10 bg-purple-500/20 border border-purple-500/40 rounded-xl flex items-center justify-center text-purple-400">
+                                    <BookOpen className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-white">Script Library & Templates</h2>
+                                    <p className="text-xs text-gray-400">Manage saved speeches, categorized folders, and starter templates</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowLibrary(false)}
+                                className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                                aria-label="Close library"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {/* Search & Actions Bar */}
+                        <div className="flex flex-col sm:flex-row gap-2">
+                            <div className="relative flex-1">
+                                <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    placeholder="Search saved scripts..."
+                                    className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                                />
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                {onUpload && (
+                                    <label className="px-3.5 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-xl text-xs font-semibold text-gray-300 cursor-pointer flex items-center space-x-1.5 transition-colors">
+                                        <Upload className="w-3.5 h-3.5 text-cyan-400" />
+                                        <span>Upload .txt</span>
+                                        <input
+                                            type="file"
+                                            accept=".txt,text/plain"
+                                            onChange={(e) => {
+                                                onUpload(e);
+                                                setShowLibrary(false);
+                                            }}
+                                            className="hidden"
+                                        />
+                                    </label>
+                                )}
+                                <button
+                                    onClick={() => {
+                                        setEditorText("");
+                                        setEditorScriptTitle("Untitled Speech");
+                                        setShowLibrary(false);
+                                        setShowScriptEditor(true);
+                                    }}
+                                    className="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-colors"
+                                >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>New Script</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Folder Filter Tabs */}
+                        <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 text-xs">
+                            {folders.map((folder) => (
+                                <button
+                                    key={folder}
+                                    onClick={() => setSelectedFolder(folder)}
+                                    className={`px-3 py-1.5 rounded-xl font-medium shrink-0 transition-colors flex items-center space-x-1.5 ${
+                                        selectedFolder === folder
+                                            ? "bg-purple-600 text-white"
+                                            : "bg-gray-800 hover:bg-gray-700 text-gray-400 border border-gray-700"
+                                    }`}
+                                >
+                                    <Folder className="w-3 h-3" />
+                                    <span>{folder}</span>
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Scripts List */}
+                        <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 max-h-[360px]">
+                            {filteredSavedScripts.length > 0 ? (
+                                filteredSavedScripts.map((script) => (
+                                    <div
+                                        key={script.id}
+                                        className="p-4 bg-gray-800/60 hover:bg-gray-800 border border-gray-700 rounded-2xl flex items-center justify-between transition-all group"
+                                    >
+                                        <div className="space-y-1 max-w-[65%]">
+                                            <div className="flex items-center space-x-2">
+                                                <h4 className="text-sm font-bold text-white truncate">{script.title}</h4>
+                                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-medium">
+                                                    {script.folder || "General"}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-gray-400 line-clamp-1">{script.content}</p>
+                                            <div className="text-[10px] text-gray-500">
+                                                {script.content.split(/\s+/).filter(Boolean).length} words • {new Date(script.updatedAt || script.createdAt).toLocaleDateString()}
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center space-x-2">
+                                            <button
+                                                onClick={() => {
+                                                    if (onLoadScript) onLoadScript(script);
+                                                    setShowLibrary(false);
+                                                    resetPosition();
+                                                }}
+                                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-colors"
+                                            >
+                                                Load
+                                            </button>
+                                            <button
+                                                onClick={() => handleExportTxt({ title: script.title, content: script.content })}
+                                                className="p-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
+                                                title="Download .txt"
+                                            >
+                                                <Download className="w-4 h-4" />
+                                            </button>
+                                            {onDeleteScript && (
+                                                <button
+                                                    onClick={() => onDeleteScript(script.id)}
+                                                    className="p-1.5 bg-red-900/40 hover:bg-red-900/70 border border-red-700/50 text-red-300 rounded-lg transition-colors"
+                                                    title="Delete script"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center py-8 text-gray-400 space-y-2">
+                                    <FileText className="w-8 h-8 mx-auto text-gray-600" />
+                                    <p className="text-sm">No saved scripts found in this category.</p>
+                                    <p className="text-xs text-gray-500">Click &ldquo;New Script&rdquo; or save your current text to build your library.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Accessibility & Typography Modal (A11y) */}
+            {showAccessibilityModal && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[115] p-4">
+                    <div className="bg-gray-900 border-2 border-amber-500/40 rounded-3xl p-6 md:p-8 max-w-xl w-full max-h-[90vh] overflow-y-auto shadow-2xl space-y-5 animate-scaleIn">
+                        {/* Header */}
+                        <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+                            <div className="flex items-center space-x-3">
+                                <div className="w-10 h-10 bg-amber-500/20 border border-amber-500/40 rounded-xl flex items-center justify-center text-amber-400">
+                                    <Eye className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-white">Accessibility & Focus Suite</h2>
+                                    <p className="text-xs text-gray-400">WCAG AAA contrast, dyslexia-friendly fonts, and reading focus ruler</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowAccessibilityModal(false)}
+                                className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                                aria-label="Close accessibility modal"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {/* Themes (Including WCAG AAA Yellow/Black) */}
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-gray-300 uppercase tracking-wider block">
+                                Visual Theme & Contrast
+                            </label>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {(Object.keys(themes) as Theme[]).map((tKey) => {
+                                    const tObj = themes[tKey];
+                                    const isSelected = theme === tKey;
+                                    return (
+                                        <button
+                                            key={tKey}
+                                            onClick={() => {
+                                                setTheme(tKey);
+                                                announce(`Switched theme to ${tObj.name}`);
+                                            }}
+                                            className={`p-3 rounded-xl border text-left flex items-center justify-between transition-all ${
+                                                isSelected
+                                                    ? "border-amber-400 bg-amber-500/10 ring-2 ring-amber-400"
+                                                    : "border-gray-700 bg-gray-800/60 hover:bg-gray-800"
+                                            }`}
+                                        >
+                                            <div>
+                                                <div className="text-xs font-bold text-white">{tObj.name}</div>
+                                                <div className="text-[10px] text-gray-400 mt-0.5">
+                                                    {tKey === "contrast" ? "Maximum Visibility (WCAG AAA)" : `${tKey} background`}
+                                                </div>
+                                            </div>
+                                            {isSelected && <Check className="w-4 h-4 text-amber-400 shrink-0" />}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Font Family Selection */}
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-gray-300 uppercase tracking-wider block">
+                                Typography & Reading Comfort
+                            </label>
+                            <div className="grid grid-cols-3 gap-2">
+                                {[
+                                    { id: "sans", name: "Modern Sans", desc: "Inter / System" },
+                                    { id: "mono", name: "Clean Mono", desc: "Dyslexia-Friendly" },
+                                    { id: "serif", name: "Editorial Serif", desc: "Classic Cadence" },
+                                ].map((font) => (
+                                    <button
+                                        key={font.id}
+                                        onClick={() => setFontFamily(font.id as "sans" | "mono" | "serif")}
+                                        className={`p-2.5 rounded-xl border text-center transition-all ${
+                                            fontFamily === font.id
+                                                ? "border-amber-400 bg-amber-500/10 ring-2 ring-amber-400"
+                                                : "border-gray-700 bg-gray-800/60 hover:bg-gray-800"
+                                        }`}
+                                    >
+                                        <div className={`text-xs font-bold text-white ${font.id === "mono" ? "font-mono" : font.id === "serif" ? "font-serif" : "font-sans"}`}>
+                                            {font.name}
+                                        </div>
+                                        <div className="text-[10px] text-gray-400 mt-0.5">{font.desc}</div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Horizontal Focus Guide Ruler */}
+                        <div className="p-4 bg-gray-800/60 border border-gray-700 rounded-2xl space-y-3">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <div className="font-semibold text-white text-sm">Eye-Level Reading Focus Guide</div>
+                                    <div className="text-xs text-gray-400">High-visibility highlighted band at prompter center (G)</div>
+                                </div>
+                                <button
+                                    onClick={() => setShowReadingGuide(!showReadingGuide)}
+                                    className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors ${
+                                        showReadingGuide ? "bg-amber-500" : "bg-gray-700"
+                                    }`}
+                                >
+                                    <div
+                                        className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                                            showReadingGuide ? "translate-x-6" : "translate-x-0"
+                                        }`}
+                                    />
+                                </button>
+                            </div>
+
+                            {showReadingGuide && (
+                                <div className="space-y-1 pt-1 border-t border-gray-700">
+                                    <div className="flex justify-between text-xs text-gray-400">
+                                        <span>Guide Opacity</span>
+                                        <span>{Math.round(guideOpacity * 100)}%</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="0.2"
+                                        max="1.0"
+                                        step="0.05"
+                                        value={guideOpacity}
+                                        onChange={(e) => setGuideOpacity(parseFloat(e.target.value))}
+                                        className="w-full"
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Text Alignment & Line Spacing */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-gray-300 uppercase tracking-wider block">Alignment</label>
+                                <div className="flex space-x-1 bg-gray-800 p-1 rounded-xl border border-gray-700">
+                                    <button
+                                        onClick={() => setTextAlign("left")}
+                                        className={`flex-1 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1 transition-colors ${
+                                            textAlign === "left" ? "bg-amber-500 text-black" : "text-gray-400 hover:text-white"
+                                        }`}
+                                    >
+                                        <AlignLeft className="w-3.5 h-3.5" />
+                                        <span>Left</span>
+                                    </button>
+                                    <button
+                                        onClick={() => setTextAlign("center")}
+                                        className={`flex-1 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1 transition-colors ${
+                                            textAlign === "center" ? "bg-amber-500 text-black" : "text-gray-400 hover:text-white"
+                                        }`}
+                                    >
+                                        <AlignCenter className="w-3.5 h-3.5" />
+                                        <span>Center</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-gray-300 uppercase tracking-wider block">Line Spacing</label>
+                                <div className="flex space-x-1 bg-gray-800 p-1 rounded-xl border border-gray-700">
+                                    <button
+                                        onClick={() => setLineSpacing("relaxed")}
+                                        className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                                            lineSpacing === "relaxed" ? "bg-amber-500 text-black" : "text-gray-400 hover:text-white"
+                                        }`}
+                                    >
+                                        Relaxed (1.8x)
+                                    </button>
+                                    <button
+                                        onClick={() => setLineSpacing("loose")}
+                                        className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                                            lineSpacing === "loose" ? "bg-amber-500 text-black" : "text-gray-400 hover:text-white"
+                                        }`}
+                                    >
+                                        Loose (2.2x)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Keyboard Shortcuts Cheat Sheet Modal (? or H) */}
+            {showShortcutsModal && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[115] p-4">
+                    <div className="bg-gray-900 border-2 border-gray-700 rounded-3xl p-6 md:p-8 max-w-xl w-full max-h-[90vh] overflow-y-auto shadow-2xl space-y-5 animate-scaleIn">
+                        {/* Header */}
+                        <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+                            <div className="flex items-center space-x-3">
+                                <div className="w-10 h-10 bg-blue-500/20 border border-blue-500/40 rounded-xl flex items-center justify-center text-blue-400">
+                                    <HelpCircle className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-white">Keyboard Shortcuts</h2>
+                                    <p className="text-xs text-gray-400">Quick, hands-free control during presentations</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowShortcutsModal(false)}
+                                className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                                aria-label="Close shortcuts"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {/* Shortcuts Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                            <div className="space-y-2">
+                                <div className="text-xs font-bold text-cyan-400 uppercase tracking-wider">Playback & Voice</div>
+                                <div className="p-2.5 bg-gray-800/60 rounded-xl flex items-center justify-between">
+                                    <span className="text-gray-300">Play / Pause</span>
+                                    <kbd className="px-2 py-1 bg-gray-700 rounded text-xs font-mono text-white">Space</kbd>
+                                </div>
+                                <div className="p-2.5 bg-gray-800/60 rounded-xl flex items-center justify-between">
+                                    <span className="text-gray-300">Audio Speaker</span>
+                                    <kbd className="px-2 py-1 bg-gray-700 rounded text-xs font-mono text-white">A</kbd>
+                                </div>
+                                <div className="p-2.5 bg-gray-800/60 rounded-xl flex items-center justify-between">
+                                    <span className="text-gray-300">Loud Audio Mode</span>
+                                    <kbd className="px-2 py-1 bg-gray-700 rounded text-xs font-mono text-white">L</kbd>
+                                </div>
+                                <div className="p-2.5 bg-gray-800/60 rounded-xl flex items-center justify-between">
+                                    <span className="text-gray-300">Reset to Start</span>
+                                    <kbd className="px-2 py-1 bg-gray-700 rounded text-xs font-mono text-white">R</kbd>
+                                </div>
+                                <div className="p-2.5 bg-gray-800/60 rounded-xl flex items-center justify-between">
+                                    <span className="text-gray-300">Save Bookmark</span>
+                                    <kbd className="px-2 py-1 bg-gray-700 rounded text-xs font-mono text-white">S</kbd>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <div className="text-xs font-bold text-amber-400 uppercase tracking-wider">Navigation & Tools</div>
+                                <div className="p-2.5 bg-gray-800/60 rounded-xl flex items-center justify-between">
+                                    <span className="text-gray-300">Speed (Faster/Slower)</span>
+                                    <kbd className="px-2 py-1 bg-gray-700 rounded text-xs font-mono text-white">↑ / ↓</kbd>
+                                </div>
+                                <div className="p-2.5 bg-gray-800/60 rounded-xl flex items-center justify-between">
+                                    <span className="text-gray-300">Font Size (+ / -)</span>
+                                    <kbd className="px-2 py-1 bg-gray-700 rounded text-xs font-mono text-white">→ / ←</kbd>
+                                </div>
+                                <div className="p-2.5 bg-gray-800/60 rounded-xl flex items-center justify-between">
+                                    <span className="text-gray-300">Edit Script</span>
+                                    <kbd className="px-2 py-1 bg-gray-700 rounded text-xs font-mono text-white">E</kbd>
+                                </div>
+                                <div className="p-2.5 bg-gray-800/60 rounded-xl flex items-center justify-between">
+                                    <span className="text-gray-300">Script Library</span>
+                                    <kbd className="px-2 py-1 bg-gray-700 rounded text-xs font-mono text-white">B</kbd>
+                                </div>
+                                <div className="p-2.5 bg-gray-800/60 rounded-xl flex items-center justify-between">
+                                    <span className="text-gray-300">Focus Ruler</span>
+                                    <kbd className="px-2 py-1 bg-gray-700 rounded text-xs font-mono text-white">G</kbd>
+                                </div>
+                                <div className="p-2.5 bg-gray-800/60 rounded-xl flex items-center justify-between">
+                                    <span className="text-gray-300">Fullscreen / Mirror</span>
+                                    <kbd className="px-2 py-1 bg-gray-700 rounded text-xs font-mono text-white">F / M</kbd>
+                                </div>
+                                <div className="p-2.5 bg-gray-800/60 rounded-xl flex items-center justify-between">
+                                    <span className="text-gray-300">Trust &amp; Legal Center</span>
+                                    <kbd className="px-2 py-1 bg-gray-700 rounded text-xs font-mono text-emerald-400">T</kbd>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Web Trust, Privacy & Legal Compliance Modal (Skill: web-trust-and-compliance) */}
+            {showTrustModal && (
+                <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-[125] p-3 sm:p-4 animate-fadeIn">
+                    <div className="bg-gray-900 border-2 border-emerald-500/40 rounded-3xl p-5 sm:p-7 max-w-2xl w-full max-h-[88vh] flex flex-col shadow-2xl space-y-4 animate-scaleIn overflow-hidden">
+                        {/* Header */}
+                        <div className="flex items-center justify-between border-b border-gray-800 pb-3 shrink-0">
+                            <div className="flex items-center space-x-3">
+                                <div className="w-10 h-10 bg-emerald-500/20 border border-emerald-500/40 rounded-xl flex items-center justify-center text-emerald-400">
+                                    <Shield className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <div className="flex items-center space-x-2">
+                                        <h2 className="text-lg font-bold text-white">Trust, Privacy &amp; Legal Center</h2>
+                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                            100% Client-Side
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-gray-400">Compliance disclosure, privacy guarantee &amp; open source licensing</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowTrustModal(false)}
+                                className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors cursor-pointer"
+                                aria-label="Close Trust Modal"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {/* Navigation Tabs */}
+                        <div className="flex space-x-1 bg-gray-800/80 p-1 rounded-xl border border-gray-700/60 shrink-0 text-xs">
+                            <button
+                                onClick={() => setTrustTab("privacy")}
+                                className={`flex-1 py-1.5 rounded-lg font-semibold transition-colors flex items-center justify-center space-x-1.5 cursor-pointer ${
+                                    trustTab === "privacy" ? "bg-emerald-600 text-white shadow" : "text-gray-400 hover:text-white"
+                                }`}
+                            >
+                                <Lock className="w-3.5 h-3.5" />
+                                <span>Privacy Guarantee</span>
+                            </button>
+                            <button
+                                onClick={() => setTrustTab("terms")}
+                                className={`flex-1 py-1.5 rounded-lg font-semibold transition-colors flex items-center justify-center space-x-1.5 cursor-pointer ${
+                                    trustTab === "terms" ? "bg-emerald-600 text-white shadow" : "text-gray-400 hover:text-white"
+                                }`}
+                            >
+                                <FileText className="w-3.5 h-3.5" />
+                                <span>Terms &amp; IP</span>
+                            </button>
+                            <button
+                                onClick={() => setTrustTab("about")}
+                                className={`flex-1 py-1.5 rounded-lg font-semibold transition-colors flex items-center justify-center space-x-1.5 cursor-pointer ${
+                                    trustTab === "about" ? "bg-emerald-600 text-white shadow" : "text-gray-400 hover:text-white"
+                                }`}
+                            >
+                                <Info className="w-3.5 h-3.5" />
+                                <span>About &amp; Author</span>
+                            </button>
+                            <button
+                                onClick={() => setTrustTab("support")}
+                                className={`flex-1 py-1.5 rounded-lg font-semibold transition-colors flex items-center justify-center space-x-1.5 cursor-pointer ${
+                                    trustTab === "support" ? "bg-emerald-600 text-white shadow" : "text-gray-400 hover:text-white"
+                                }`}
+                            >
+                                <HelpCircle className="w-3.5 h-3.5" />
+                                <span>Support SLA</span>
+                            </button>
+                        </div>
+
+                        {/* Tab Content (Scrollable inside modal) */}
+                        <div className="overflow-y-auto space-y-4 pr-1 text-xs text-gray-300 flex-1">
+                            {trustTab === "privacy" && (
+                                <div className="space-y-3.5">
+                                    <div className="p-3.5 bg-emerald-950/30 border border-emerald-500/30 rounded-2xl space-y-1.5">
+                                        <div className="flex items-center space-x-2 text-emerald-400 font-bold text-sm">
+                                            <Lock className="w-4 h-4" />
+                                            <span>Zero-Data Transmission Policy</span>
+                                        </div>
+                                        <p className="leading-relaxed text-gray-300">
+                                            TelePrompt Pro is engineered with a strict <strong>100% Client-Side Architecture</strong>. All scripts, bookmarks, scroll velocities, and settings are saved only in your browser&apos;s local memory (<code className="text-cyan-300">localStorage</code>). No text, microphone audio, or speech synthesis is ever sent to external cloud servers.
+                                        </p>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                        <div className="p-3 bg-gray-800/60 rounded-xl border border-gray-700/50 space-y-1">
+                                            <strong className="text-white block font-semibold">🎙️ Local Speech Synthesis</strong>
+                                            <p className="text-gray-400 leading-snug">
+                                                Voice coaching uses your device&apos;s built-in Web Speech API (<code className="text-cyan-300">speechSynthesis</code>). Audio never leaves your physical machine.
+                                            </p>
+                                        </div>
+                                        <div className="p-3 bg-gray-800/60 rounded-xl border border-gray-700/50 space-y-1">
+                                            <strong className="text-white block font-semibold">🚫 Zero Trackers &amp; No Cookies</strong>
+                                            <p className="text-gray-400 leading-snug">
+                                                Zero analytics SDKs, zero Meta pixels, zero third-party advertising cookies, and zero fingerprinting.
+                                            </p>
+                                        </div>
+                                        <div className="p-3 bg-gray-800/60 rounded-xl border border-gray-700/50 space-y-1">
+                                            <strong className="text-white block font-semibold">🛡️ GDPR &amp; CCPA Built-In</strong>
+                                            <p className="text-gray-400 leading-snug">
+                                                Complies with GDPR Article 5 (Data Minimisation) and CCPA/CPRA because no personal data is collected or stored remotely.
+                                            </p>
+                                        </div>
+                                        <div className="p-3 bg-gray-800/60 rounded-xl border border-gray-700/50 space-y-1">
+                                            <strong className="text-white block font-semibold">💾 Instant Data Control</strong>
+                                            <p className="text-gray-400 leading-snug">
+                                                Export your script as plain text at any time, or clear local storage to wipe all cached data with zero residual traces.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {trustTab === "terms" && (
+                                <div className="space-y-3">
+                                    <div className="p-3.5 bg-blue-950/30 border border-blue-500/30 rounded-2xl space-y-1.5">
+                                        <div className="flex items-center space-x-2 text-cyan-400 font-bold text-sm">
+                                            <FileText className="w-4 h-4" />
+                                            <span>Full User Intellectual Property Ownership</span>
+                                        </div>
+                                        <p className="leading-relaxed text-gray-300">
+                                            You retain <strong>100% intellectual property, copyright, and distribution rights</strong> for all speeches, texts, presentations, and video recordings created with TelePrompt Pro.
+                                        </p>
+                                    </div>
+
+                                    <div className="p-3.5 bg-gray-800/60 border border-gray-700/50 rounded-2xl space-y-2">
+                                        <div className="text-white font-bold">📜 Apache-2.0 Open Source License</div>
+                                        <p className="text-gray-300 leading-relaxed">
+                                            Free to use for commercial broadcast television, YouTube creators, corporate conferences, academic institutions, and personal rehearsals. No royalties, no forced licensing attribution in your video credits, and no paywalls.
+                                        </p>
+                                        <div className="text-[11px] text-gray-400 pt-1 border-t border-gray-700">
+                                            Warranty Disclaimer: Provided &quot;as-is&quot; without warranties of any kind under standard Apache-2.0 terms.
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {trustTab === "about" && (
+                                <div className="space-y-3">
+                                    <div className="p-3.5 bg-purple-950/30 border border-purple-500/30 rounded-2xl space-y-2">
+                                        <div className="flex items-center space-x-2 text-purple-300 font-bold text-sm">
+                                            <Info className="w-4 h-4" />
+                                            <span>About TelePrompt Pro</span>
+                                        </div>
+                                        <p className="text-gray-300 leading-relaxed">
+                                            TelePrompt Pro is an open-source, studio-grade teleprompter and vocal cadence training suite engineered by <strong>Karthikeyan T (@carthworks)</strong>.
+                                        </p>
+                                        <p className="text-gray-400 italic">
+                                            &quot;Empowering confident speech, flawless recording, and effortless vocal delivery with accessible web engineering.&quot;
+                                        </p>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                        <a
+                                            href="https://github.com/carthworks/TelePrompt"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="p-3 bg-gray-800/80 hover:bg-gray-700 rounded-xl border border-gray-700 flex items-center justify-between text-white transition-colors"
+                                        >
+                                            <span>GitHub Repository</span>
+                                            <ExternalLink className="w-3.5 h-3.5 text-cyan-400" />
+                                        </a>
+                                        <a
+                                            href="https://www.linkedin.com/in/carthworks"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="p-3 bg-gray-800/80 hover:bg-gray-700 rounded-xl border border-gray-700 flex items-center justify-between text-white transition-colors"
+                                        >
+                                            <span>LinkedIn Profile</span>
+                                            <ExternalLink className="w-3.5 h-3.5 text-cyan-400" />
+                                        </a>
+                                    </div>
+                                </div>
+                            )}
+
+                            {trustTab === "support" && (
+                                <div className="space-y-3">
+                                    <div className="p-3.5 bg-amber-950/30 border border-amber-500/30 rounded-2xl space-y-1.5">
+                                        <div className="flex items-center space-x-2 text-amber-400 font-bold text-sm">
+                                            <HelpCircle className="w-4 h-4" />
+                                            <span>Support SLA &amp; Consumer Trust Commitments</span>
+                                        </div>
+                                        <p className="text-gray-300 leading-relaxed">
+                                            Support inquiries and bug reports are responded to within <strong>24 to 48 business hours</strong> via GitHub Issues or direct email (<code className="text-amber-300">tkarthikeyan@gmail.com</code>).
+                                        </p>
+                                    </div>
+
+                                    <div className="space-y-2 p-3 bg-gray-800/60 rounded-2xl border border-gray-700/50">
+                                        <strong className="text-white block font-semibold">🕊️ Anti-Dark Patterns Guarantee (FTC Compliant)</strong>
+                                        <ul className="space-y-1 text-gray-400 pl-4 list-disc text-[11px]">
+                                            <li>Zero hidden pricing, drip charges, or recurring trial billing traps.</li>
+                                            <li>No fake urgency timers or fabricated scarcity counters.</li>
+                                            <li>No confirm-shaming copy or pre-selected marketing checkboxes.</li>
+                                            <li>WCAG 2.1 AAA high-contrast and keyboard accessible by design.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="flex items-center justify-between pt-2 border-t border-gray-800 shrink-0 text-xs">
+                            <span className="text-gray-500">TelePrompt Pro v2.5.0 • Apache-2.0</span>
+                            <button
+                                onClick={() => setShowTrustModal(false)}
+                                className="px-4 py-1.5 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-semibold transition-colors cursor-pointer"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Save Script Modal */}
+            {showSaveModal && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[120] p-4">
+                    <div className="bg-gray-900 border-2 border-purple-500/40 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl space-y-4 animate-scaleIn">
+                        <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+                            <h3 className="text-lg font-bold text-white flex items-center space-x-2">
+                                <Bookmark className="w-5 h-5 text-purple-400" />
+                                <span>Save Script to Library</span>
+                            </h3>
+                            <button
+                                onClick={() => setShowSaveModal(false)}
+                                className="p-1.5 text-gray-400 hover:text-white rounded-lg"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-3">
+                            <div>
+                                <label className="text-xs font-semibold text-gray-400 mb-1 block">Script Title</label>
+                                <input
+                                    type="text"
+                                    value={saveTitleInput}
+                                    onChange={(e) => setSaveTitleInput(e.target.value)}
+                                    placeholder="Enter script title..."
+                                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-semibold text-gray-400 mb-1 block">Folder</label>
+                                <select
+                                    value={saveFolderInput}
+                                    onChange={(e) => {
+                                        if (e.target.value === "__NEW__") {
+                                            setShowNewFolder(true);
+                                        } else {
+                                            setSaveFolderInput(e.target.value);
+                                            setShowNewFolder(false);
+                                        }
+                                    }}
+                                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-purple-500"
+                                >
+                                    {folders.filter((f) => f !== "All").map((f) => (
+                                        <option key={f} value={f}>{f}</option>
+                                    ))}
+                                    <option value="__NEW__">+ Create New Folder...</option>
+                                </select>
+                            </div>
+
+                            {showNewFolder && (
+                                <div>
+                                    <input
+                                        type="text"
+                                        value={newFolderName}
+                                        onChange={(e) => setNewFolderName(e.target.value)}
+                                        placeholder="New folder name..."
+                                        className="w-full bg-gray-800 border border-purple-500 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none"
+                                        onBlur={() => {
+                                            if (newFolderName.trim()) {
+                                                setSaveFolderInput(newFolderName.trim());
+                                            }
+                                        }}
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex justify-end space-x-2 pt-2 border-t border-gray-800">
+                            <button
+                                onClick={() => setShowSaveModal(false)}
+                                className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl text-xs font-semibold"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSaveCurrentScript}
+                                className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-lg"
+                            >
+                                Save Script
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Accessible Screen Reader Live Announcements */}
+            <div aria-live="polite" aria-atomic="true" className="sr-only">
+                {liveAnnouncement}
+            </div>
         </div>
     );
 }

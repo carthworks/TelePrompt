@@ -180,64 +180,6 @@ export default function SpeechPage() {
         );
     }
 
-    // Upload Modal
-    const UploadModal = () => (
-        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[100] p-4">
-            <div className="bg-gray-900 border-2 border-gray-700 rounded-2xl p-8 max-w-md w-full">
-                <h2 className="text-2xl font-bold text-white mb-4">Upload Speech Content</h2>
-                <p className="text-gray-400 mb-6">
-                    Upload a .txt file with your speech content
-                </p>
-
-                <div className="space-y-4">
-                    {/* File Input */}
-                    <label className="block">
-                        <div className="border-2 border-dashed border-gray-700 rounded-lg p-8 text-center hover:border-blue-500 transition-colors cursor-pointer">
-                            <Upload className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                            <p className="text-white font-semibold mb-1">Click to upload</p>
-                            <p className="text-sm text-gray-400">or drag and drop</p>
-                            <p className="text-xs text-gray-500 mt-2">TXT files only</p>
-                        </div>
-                        <input
-                            type="file"
-                            accept=".txt,text/plain"
-                            onChange={handleFileUpload}
-                            className="hidden"
-                        />
-                    </label>
-
-                    {/* Current File */}
-                    {uploadedFileName && (
-                        <div className="bg-green-900/20 border border-green-700 rounded-lg p-3 flex items-center space-x-2">
-                            <FileText className="w-5 h-5 text-green-400" />
-                            <span className="text-green-400 text-sm">{uploadedFileName}</span>
-                        </div>
-                    )}
-
-                    {/* Buttons */}
-                    <div className="flex space-x-3">
-                        <button
-                            onClick={() => setShowUploadModal(false)}
-                            className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={() => {
-                                loadDefaultContent();
-                                setShowUploadModal(false);
-                                setUploadedFileName("");
-                            }}
-                            className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                        >
-                            Load Default
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-
     // Main Teleprompter with Upload Button
     return (
         <div className="relative">
@@ -260,7 +202,62 @@ export default function SpeechPage() {
             </div>
 
             {/* Upload Modal */}
-            {showUploadModal && <UploadModal />}
+            {showUploadModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-[100] p-4">
+                    <div className="bg-gray-900 border-2 border-gray-700 rounded-2xl p-8 max-w-md w-full">
+                        <h2 className="text-2xl font-bold text-white mb-4">Upload Speech Content</h2>
+                        <p className="text-gray-400 mb-6">
+                            Upload a .txt file with your speech content
+                        </p>
+
+                        <div className="space-y-4">
+                            {/* File Input */}
+                            <label className="block">
+                                <div className="border-2 border-dashed border-gray-700 rounded-lg p-8 text-center hover:border-blue-500 transition-colors cursor-pointer">
+                                    <Upload className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                                    <p className="text-white font-semibold mb-1">Click to upload</p>
+                                    <p className="text-sm text-gray-400">or drag and drop</p>
+                                    <p className="text-xs text-gray-500 mt-2">TXT files only</p>
+                                </div>
+                                <input
+                                    type="file"
+                                    accept=".txt,text/plain"
+                                    onChange={handleFileUpload}
+                                    className="hidden"
+                                />
+                            </label>
+
+                            {/* Current File */}
+                            {uploadedFileName && (
+                                <div className="bg-green-900/20 border border-green-700 rounded-lg p-3 flex items-center space-x-2">
+                                    <FileText className="w-5 h-5 text-green-400" />
+                                    <span className="text-green-400 text-sm">{uploadedFileName}</span>
+                                </div>
+                            )}
+
+                            {/* Buttons */}
+                            <div className="flex space-x-3">
+                                <button
+                                    onClick={() => setShowUploadModal(false)}
+                                    className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        loadDefaultContent();
+                                        setShowUploadModal(false);
+                                        setUploadedFileName("");
+                                    }}
+                                    className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                                >
+                                    Load Default
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Teleprompter */}
             <Teleprompter

@@ -1,0 +1,1481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teleprompter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #070b14;
+    --nav-bg: #0e1422;
+    --nav-border: #1c2438;
+    --surface: #151d2f;
+    --surface-hover: #1d2740;
+    --text: #e6ebf5;
+    --text-dim: #8591a8;
+    --accent: #22d3ee;
+    --accent-strong: #06b6d4;
+    --home: #3b82f6;
+    --success: #22c55e;
+    --stage-bg: #0b1226;
+    --stage-edge: #1a2544;
+    --read-text: #f4f7fc;
+    --past-text: #4b5673;
+    --guide: rgba(34, 211, 238, 0.10);
+    --guide-line: rgba(34, 211, 238, 0.55);
+    --radius: 10px;
+    --font-size: 40px;
+    --line-height: 1.6;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { height: 100%; }
+
+  body {
+    font-family: "Inter", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  button { font: inherit; color: inherit; cursor: pointer; border: none; background: none; }
+
+  /* ---------- Top navigation (Studio Pro Redesign) ---------- */
+  .topbar {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 16px;
+    height: 68px;
+    padding: 0 20px;
+    background: rgba(14, 20, 34, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    position: relative;
+    z-index: 50;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  }
+
+  .nav-group { display: flex; align-items: center; gap: 8px; }
+  .nav-left { justify-content: flex-start; min-width: 0; }
+  .nav-center { justify-content: center; }
+  .nav-right { justify-content: flex-end; }
+
+  .nav-divider { width: 1px; height: 26px; background: rgba(255, 255, 255, 0.12); margin: 0 4px; }
+
+  /* Brand Capsule */
+  .brand-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px 6px 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    user-select: none;
+    transition: all 0.2s ease;
+  }
+  .brand-pill:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(34, 211, 238, 0.3);
+  }
+  .brand-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #0ea5e9, #22d3ee);
+    display: grid;
+    place-items: center;
+    color: #04202a;
+    box-shadow: 0 0 10px rgba(34, 211, 238, 0.4);
+  }
+  .brand-icon svg { width: 13px; height: 13px; stroke-width: 2.5; }
+  .brand-text { color: #f8fafc; font-weight: 700; font-size: 13px; }
+
+  /* Script Selector Card */
+  .script-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px 4px 10px;
+    background: rgba(19, 27, 46, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 10px;
+    min-width: 0;
+    max-width: 260px;
+    transition: border-color 0.2s;
+  }
+  .script-badge:hover { border-color: rgba(34, 211, 238, 0.35); }
+  .script-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 8px #22c55e;
+    flex-shrink: 0;
+  }
+  .script-title-btn {
+    font-size: 13px;
+    font-weight: 600;
+    color: #e2e8f0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    text-align: left;
+  }
+  .script-title-btn:hover { color: #38bdf8; }
+  .mini-tool-btn {
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    color: #94a3b8;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .mini-tool-btn:hover { background: rgba(34, 211, 238, 0.15); color: #38bdf8; }
+  .mini-tool-btn svg { width: 14px; height: 14px; }
+
+  /* Master Broadcast Transport Dock */
+  .transport-dock {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 999px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  .transport-btn {
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.04);
+    color: #94a3b8;
+    transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .transport-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #f8fafc;
+    transform: translateY(-1px);
+  }
+  .transport-btn:active { transform: translateY(0); }
+  .transport-btn svg { width: 18px; height: 18px; }
+
+  /* 3s Countdown Pill */
+  .countdown-badge {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    height: 34px;
+    padding: 0 11px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #cbd5e1;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+  }
+  .countdown-badge:hover {
+    background: rgba(34, 211, 238, 0.12);
+    border-color: rgba(34, 211, 238, 0.4);
+    color: #22d3ee;
+  }
+  .countdown-icon { width: 14px; height: 14px; }
+
+  /* Hero Play Button */
+  .hero-play-btn {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #06b6d4 0%, #0284c7 100%);
+    color: #031e2b;
+    display: grid;
+    place-items: center;
+    box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.2), 0 4px 14px rgba(6, 182, 212, 0.4);
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    margin: 0 2px;
+  }
+  .hero-play-btn:hover {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 5px rgba(6, 182, 212, 0.3), 0 6px 20px rgba(6, 182, 212, 0.55);
+  }
+  .hero-play-btn:active { transform: scale(0.96); }
+  .hero-play-btn svg { width: 22px; height: 22px; margin-left: 2px; }
+  .hero-play-btn.playing svg { margin-left: 0; }
+  .hero-spacebar-hint {
+    position: absolute;
+    bottom: -18px;
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .transport-dock:hover .hero-spacebar-hint { opacity: 1; }
+
+  .transport-divider { width: 1px; height: 22px; background: rgba(255, 255, 255, 0.1); margin: 0 2px; }
+
+  /* Broadcast Clock */
+  .broadcast-clock {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0 10px;
+    height: 32px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .clock-live-indicator {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #64748b;
+    transition: all 0.2s;
+  }
+  .clock-live-indicator.live {
+    background: #22c55e;
+    box-shadow: 0 0 8px #22c55e;
+    animation: livePulse 1.5s infinite;
+  }
+  @keyframes livePulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.85); }
+  }
+  .clock-digits {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: #f1f5f9;
+    letter-spacing: 0.04em;
+    min-width: 44px;
+    text-align: center;
+  }
+
+  /* Right Side: Stepper Capsules */
+  .stepper-capsule {
+    display: flex;
+    align-items: center;
+    height: 38px;
+    padding: 2px 4px 2px 8px;
+    background: rgba(19, 27, 46, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 10px;
+    gap: 4px;
+    transition: border-color 0.2s;
+  }
+  .stepper-capsule:hover { border-color: rgba(34, 211, 238, 0.3); }
+  .stepper-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #94a3b8;
+    margin-right: 2px;
+  }
+  .stepper-label svg { width: 12px; height: 12px; color: #38bdf8; }
+  .font-icon-aa { font-size: 12px; font-weight: 700; color: #a855f7; }
+  .step-btn {
+    width: 24px;
+    height: 24px;
+    display: grid;
+    place-items: center;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #cbd5e1;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+    transition: all 0.15s;
+  }
+  .step-btn:hover { background: rgba(34, 211, 238, 0.2); color: #38bdf8; }
+  .stepper-val {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: #f8fafc;
+    min-width: 32px;
+    text-align: center;
+  }
+  .hidden-slider { display: none; }
+
+  /* Voice Guide Button */
+  .voice-guide-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 38px;
+    padding: 0 12px;
+    border-radius: 10px;
+    background: rgba(19, 27, 46, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+  }
+  .voice-guide-btn.active {
+    background: rgba(6, 182, 212, 0.14);
+    border-color: rgba(6, 182, 212, 0.45);
+    color: #22d3ee;
+    box-shadow: 0 0 12px rgba(6, 182, 212, 0.2);
+  }
+  .voice-icon { width: 16px; height: 16px; }
+  .soundwaves {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    height: 12px;
+  }
+  .wave {
+    width: 2.5px;
+    height: 6px;
+    background: currentColor;
+    border-radius: 2px;
+  }
+  .voice-guide-btn.active .wave-1 { animation: wavePulse 0.9s infinite ease-in-out; }
+  .voice-guide-btn.active .wave-2 { animation: wavePulse 0.9s infinite ease-in-out 0.2s; }
+  .voice-guide-btn.active .wave-3 { animation: wavePulse 0.9s infinite ease-in-out 0.4s; }
+  @keyframes wavePulse {
+    0%, 100% { height: 4px; }
+    50% { height: 13px; }
+  }
+
+  /* Utility Icon Buttons */
+  .studio-icon-btn {
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    background: rgba(19, 27, 46, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    color: #94a3b8;
+    transition: all 0.18s ease;
+  }
+  .studio-icon-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #f1f5f9;
+  }
+  .studio-icon-btn.active {
+    background: rgba(34, 211, 238, 0.15);
+    border-color: rgba(34, 211, 238, 0.45);
+    color: #22d3ee;
+  }
+  .studio-icon-btn svg { width: 17px; height: 17px; }
+
+  /* Theme Select */
+  .theme-select-wrapper select {
+    height: 38px;
+    padding: 0 10px;
+    border-radius: 10px;
+    background: rgba(19, 27, 46, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    color: #cbd5e1;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .theme-select-wrapper select:hover { border-color: rgba(255, 255, 255, 0.2); }
+
+  /* Toast notification */
+  .studio-toast {
+    position: fixed;
+    top: 78px;
+    right: 20px;
+    padding: 10px 16px;
+    background: #0f172a;
+    border: 1px solid #22c55e;
+    color: #f8fafc;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    animation: toastSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes toastSlide {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ---------- Teleprompter stage ---------- */
+  .stage-wrap {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    padding: 24px;
+    min-height: 0;
+  }
+
+  .stage {
+    position: relative;
+    width: 100%;
+    max-width: 1000px;
+    background: var(--stage-bg);
+    border: 1px solid var(--stage-edge);
+    border-radius: 18px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255,255,255,.03);
+    overflow: hidden;
+  }
+
+  .scroller {
+    height: 100%;
+    overflow-y: auto;
+    scrollbar-width: none;
+    scroll-behavior: auto;
+  }
+  .scroller::-webkit-scrollbar { display: none; }
+
+  .script {
+    padding: 45vh 64px 55vh;
+    font-size: var(--font-size);
+    line-height: var(--line-height);
+    font-weight: 500;
+    color: var(--read-text);
+    letter-spacing: .005em;
+  }
+  .script p + p { margin-top: 1.1em; }
+
+  .stage.mirror .script { transform: scaleX(-1); }
+
+  /* Top & bottom fades keep focus on the reading line */
+  .stage::before, .stage::after {
+    content: ""; position: absolute; left: 0; right: 0;
+    height: 30%; pointer-events: none; z-index: 2;
+  }
+  .stage::before { top: 0; background: linear-gradient(var(--stage-bg) 10%, transparent); }
+  .stage::after { bottom: 0; background: linear-gradient(transparent, var(--stage-bg) 90%); }
+
+  /* Reading guide band */
+  .guide {
+    position: absolute; left: 0; right: 0;
+    top: 42%;
+    height: calc(var(--font-size) * var(--line-height) * 1.15);
+    background: var(--guide);
+    border-top: 1px solid var(--guide-line);
+    border-bottom: 1px solid var(--guide-line);
+    pointer-events: none; z-index: 3;
+  }
+  .guide::before, .guide::after {
+    content: ""; position: absolute; top: 50%;
+    border: 9px solid transparent; transform: translateY(-50%);
+  }
+  .guide::before { left: 10px; border-left-color: var(--accent); }
+  .guide::after { right: 10px; border-right-color: var(--accent); }
+
+  /* ---------- Bottom status bar ---------- */
+  .statusbar {
+    display: flex; justify-content: center; gap: 28px;
+    padding: 10px 20px 14px;
+    font-size: 13px; color: var(--text-dim);
+  }
+  .statusbar b { font-family: "JetBrains Mono", monospace; color: var(--text); font-weight: 500; margin-left: 6px; }
+  .progress {
+    position: fixed; left: 0; bottom: 0; height: 3px;
+    background: var(--accent); width: 0; transition: width .2s linear;
+  }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 1100px) {
+    .hide-md { display: none !important; }
+  }
+  @media (max-width: 840px) {
+    .topbar {
+      grid-template-columns: auto 1fr;
+      height: auto;
+      padding: 10px 14px;
+      row-gap: 10px;
+    }
+    .nav-center {
+      grid-column: 1 / -1;
+      order: 3;
+      justify-content: center;
+    }
+    .hide-sm { display: none !important; }
+    .stage-wrap { padding: 12px; }
+    .script { padding-left: 24px; padding-right: 24px; }
+    .statusbar { gap: 14px; flex-wrap: wrap; }
+  }
+
+  /* ---------- Initial Screen Cockpit Modal ---------- */
+  .cockpit-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(7, 11, 20, 0.94);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    padding: 12px;
+    overflow: hidden;
+  }
+  .cockpit-overlay.hidden { display: none !important; }
+
+  .cockpit-card {
+    background: #0b1322;
+    border: 1px solid #1e2c45;
+    border-radius: 24px;
+    max-width: 880px;
+    width: 100%;
+    padding: 20px 28px;
+    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.85);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: auto;
+    max-height: 96vh;
+    overflow: hidden;
+    animation: cockpitScaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes cockpitScaleIn {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .cockpit-badge-wrap { display: flex; justify-content: center; }
+  .cockpit-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    border-radius: 999px;
+    background: rgba(6, 182, 212, 0.12);
+    border: 1px solid rgba(6, 182, 212, 0.35);
+    color: #22d3ee;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    box-shadow: 0 0 16px rgba(6, 182, 212, 0.15);
+  }
+
+  .cockpit-hero { text-align: center; display: flex; flex-direction: column; gap: 10px; }
+  .cockpit-title { font-size: 38px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em; margin: 0; }
+  .cockpit-stats { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+  .cockpit-stat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 16px;
+    border-radius: 999px;
+    background: #131d2e;
+    border: 1px solid #1e2c45;
+    font-size: 12px;
+    font-weight: 600;
+    color: #cbd5e1;
+  }
+  .cockpit-stat-pill svg { color: #22d3ee; width: 14px; height: 14px; }
+
+  /* Welcome & Usage Guide */
+  .cockpit-welcome {
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.09), rgba(15, 23, 42, 0.65), rgba(37, 99, 235, 0.08));
+    border: 1px solid rgba(6, 182, 212, 0.22);
+    border-radius: 18px;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    text-align: left;
+  }
+  .welcome-header { display: flex; align-items: flex-start; gap: 14px; }
+  .welcome-icon-box {
+    width: 36px; height: 36px; border-radius: 12px;
+    background: rgba(6, 182, 212, 0.14);
+    border: 1px solid rgba(6, 182, 212, 0.3);
+    display: grid; place-items: center; color: #22d3ee; shrink: 0;
+  }
+  .welcome-text-wrap { flex: 1; }
+  .welcome-title-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: gap; gap: 8px; }
+  .welcome-title { font-size: 14px; font-weight: 700; color: #ffffff; }
+  .welcome-tag {
+    font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+    background: rgba(6, 182, 212, 0.15); color: #67e8f9; border: 1px solid rgba(6, 182, 212, 0.3);
+    text-transform: uppercase;
+  }
+  .welcome-desc { font-size: 12px; color: #cbd5e1; margin-top: 4px; line-height: 1.5; }
+  .welcome-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding-top: 4px; }
+  .step-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px; padding: 10px 12px; font-size: 11px; color: #cbd5e1;
+  }
+  .step-num {
+    width: 20px; height: 20px; border-radius: 50%; background: rgba(6, 182, 212, 0.2);
+    color: #67e8f9; font-weight: 700; display: grid; place-items: center; font-size: 10px; shrink: 0;
+  }
+  .step-item strong { color: #ffffff; display: block; font-size: 11px; margin-bottom: 2px; }
+  .step-item kbd { background: rgba(255, 255, 255, 0.1); padding: 1px 5px; border-radius: 4px; font-family: monospace; color: #22d3ee; }
+
+  /* Starter Templates */
+  .cockpit-section { display: flex; flex-direction: column; gap: 10px; text-align: left; }
+  .section-head { display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; }
+  .starter-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .starter-card {
+    background: #0e1726; border: 1px solid #1e2c45; border-radius: 16px;
+    padding: 14px; display: flex; align-items: center; gap: 12px;
+    cursor: pointer; transition: all 0.2s; text-align: left;
+  }
+  .starter-card:hover { background: #142036; border-color: #334155; }
+  .starter-card.active {
+    background: rgba(6, 182, 212, 0.12);
+    border: 2px solid #22d3ee;
+    box-shadow: 0 0 18px rgba(6, 182, 212, 0.25);
+  }
+  .starter-icon-circle {
+    width: 38px; height: 38px; border-radius: 50%;
+    display: grid; place-items: center; shrink: 0; border: 1px solid transparent;
+  }
+  .starter-card .info { min-width: 0; flex: 1; }
+  .starter-card .title { font-size: 12px; font-weight: 700; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .starter-card .cat { font-size: 11px; color: #94a3b8; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Voice Guide Card */
+  .voice-guide-card {
+    background: #0c1628; border: 1px solid rgba(6, 182, 212, 0.28);
+    border-radius: 18px; padding: 20px; display: flex; flex-direction: column; gap: 16px; text-align: left;
+  }
+  .voice-guide-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .voice-guide-info { display: flex; align-items: center; gap: 14px; }
+  .voice-speaker-box {
+    width: 44px; height: 44px; border-radius: 12px;
+    background: rgba(6, 182, 212, 0.12); border: 1px solid rgba(6, 182, 212, 0.25);
+    display: grid; place-items: center; color: #22d3ee; shrink: 0;
+  }
+  .voice-guide-title { font-size: 14px; font-weight: 700; color: #ffffff; }
+  .voice-guide-sub { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+
+  /* Switch Toggle */
+  .switch-row { display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+  .switch-track {
+    width: 44px; height: 24px; border-radius: 999px; background: #1e293b;
+    border: 1px solid #334155; padding: 2px; position: relative; transition: all 0.2s;
+  }
+  .switch-knob {
+    width: 18px; height: 18px; border-radius: 50%; background: #ffffff;
+    transition: transform 0.2s;
+  }
+  .switch-row.on .switch-track { background: #06b6d4; border-color: #06b6d4; }
+  .switch-row.on .switch-knob { transform: translateX(20px); background: #041b24; }
+  .switch-label { font-size: 12px; font-weight: 700; color: #94a3b8; width: 24px; }
+  .switch-row.on .switch-label { color: #67e8f9; }
+
+  /* Voice Guide Bottom Row */
+  .voice-guide-bottom {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+    padding-top: 14px; border-top: 1px solid #1e2c45; font-size: 12px;
+  }
+  .volume-mode-group { display: flex; align-items: center; gap: 10px; color: #cbd5e1; font-weight: 500; }
+  .volume-mode-group svg { color: #f59e0b; width: 14px; height: 14px; }
+  .segmented-ctrl {
+    display: flex; background: #080d18; border: 1px solid #1e293b; border-radius: 8px; padding: 2px;
+  }
+  .seg-btn {
+    padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;
+    color: #94a3b8; cursor: pointer; transition: all 0.2s;
+  }
+  .seg-btn.active {
+    background: rgba(6, 182, 212, 0.25); color: #ffffff; border: 1px solid rgba(6, 182, 212, 0.4);
+  }
+  .voice-actions { display: flex; align-items: center; gap: 8px; }
+  .btn-voice-settings {
+    padding: 7px 14px; border-radius: 12px; background: #131d2e; border: 1px solid #23344d;
+    color: #cbd5e1; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px; cursor: pointer;
+  }
+  .btn-test-speaker {
+    padding: 7px 14px; border-radius: 12px; background: #0e2c38; border: 1px solid rgba(20, 184, 166, 0.6);
+    color: #22d3ee; font-size: 12px; font-weight: 700; display: flex; align-items: center; gap: 6px; cursor: pointer;
+  }
+
+  /* Quick Tools Grid */
+  .tools-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; text-align: left; }
+  .tool-card {
+    background: #0e1726; border: 1px solid #1e2c45; border-radius: 16px;
+    padding: 14px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: all 0.2s;
+  }
+  .tool-card:hover { background: #142036; border-color: #334155; }
+  .tool-icon-box {
+    width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; shrink: 0;
+  }
+  .tool-card .name { font-size: 12px; font-weight: 700; color: #ffffff; }
+  .tool-card .shortcut { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+  .tool-card kbd { background: rgba(0, 0, 0, 0.5); border: 1px solid #334155; padding: 1px 5px; border-radius: 4px; font-family: monospace; color: #cbd5e1; }
+
+  /* Bottom Actions */
+  .cockpit-actions { display: flex; gap: 12px; }
+  .btn-start-hero {
+    flex: 1; padding: 16px 24px; border-radius: 16px;
+    background: linear-gradient(90deg, #2563eb, #0284c7, #10b981);
+    color: #ffffff; font-weight: 800; font-size: 15px;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    box-shadow: 0 10px 25px rgba(2, 132, 199, 0.35); cursor: pointer; transition: transform 0.15s;
+  }
+  .btn-start-hero:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .btn-start-hero kbd {
+    background: rgba(255, 255, 255, 0.2); padding: 2px 8px; border-radius: 6px;
+    font-size: 11px; font-family: monospace; font-weight: 700; backdrop-filter: blur(4px);
+  }
+  .btn-countdown {
+    padding: 16px 24px; border-radius: 16px; background: #111927;
+    border: 1px solid #1e2c45; color: #e2e8f0; font-weight: 700; font-size: 13px;
+    display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-countdown:hover { background: #1a273e; border-color: #334155; }
+  .btn-countdown svg { color: #94a3b8; width: 16px; height: 16px; }
+
+  @media (max-width: 768px) {
+    .cockpit-card { padding: 20px 16px; border-radius: 20px; }
+    .cockpit-title { font-size: 26px; }
+    .starter-grid, .tools-grid { grid-template-columns: repeat(2, 1fr); }
+    .welcome-steps { grid-template-columns: 1fr; }
+    .cockpit-actions { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<!-- All-In-One Opening Page Workspace Cockpit Modal -->
+<div id="cockpit-modal" class="cockpit-overlay">
+  <div class="cockpit-card">
+    <!-- Header Badge -->
+    <div class="cockpit-badge-wrap">
+      <div class="cockpit-badge">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+        <span>TELEPROMPTER & VOICE COACH</span>
+      </div>
+    </div>
+
+    <!-- Hero Title & Stats -->
+    <div class="cockpit-hero">
+      <h1 class="cockpit-title" id="cockpit-title">High-Engagement YouTube Script</h1>
+      <div class="cockpit-stats">
+        <span class="cockpit-stat-pill">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span id="cockpit-words">83 words</span>
+        </span>
+        <span class="cockpit-stat-pill">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span id="cockpit-delivery">~ 0:38 delivery</span>
+        </span>
+        <span class="cockpit-stat-pill">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span id="cockpit-wpm">130 WPM target</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Welcome & Usage Guide -->
+    <div class="cockpit-welcome">
+      <div class="welcome-header">
+        <div class="welcome-icon-box">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+        </div>
+        <div class="welcome-text-wrap">
+          <div class="welcome-title-row">
+            <h2 class="welcome-title">Welcome to TelePrompt & Voice Coach</h2>
+            <span class="welcome-tag">Studio Pro</span>
+          </div>
+          <p class="welcome-desc">Deliver flawless presentations with smooth auto-scrolling, line focus, and vocal cadence coaching before recording.</p>
+        </div>
+      </div>
+      <div class="welcome-steps">
+        <div class="step-item">
+          <span class="step-num">1</span>
+          <div>
+            <strong>Select or Edit Script</strong>
+            <span>Choose a template below or press <kbd>E</kbd></span>
+          </div>
+        </div>
+        <div class="step-item">
+          <span class="step-num">2</span>
+          <div>
+            <strong>Rehearse with Voice Guide</strong>
+            <span>Toggle audio below to practice natural pauses</span>
+          </div>
+        </div>
+        <div class="step-item">
+          <span class="step-num">3</span>
+          <div>
+            <strong>Present & Record</strong>
+            <span>Press <kbd>Space</kbd> or countdown to start scrolling</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STARTER TEMPLATES -->
+    <div class="cockpit-section">
+      <div class="section-head">
+        <span>STARTER TEMPLATES</span>
+        <span style="color:#64748b; font-weight:500;">Click to load</span>
+      </div>
+      <div class="starter-grid">
+        <button class="starter-card" data-template="investor_pitch">
+          <div class="starter-icon-circle" style="background:rgba(20,184,166,0.12); color:#2dd4bf; border-color:rgba(20,184,166,0.25);">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/></svg>
+          </div>
+          <div class="info">
+            <div class="title">Investor Pitch Deck</div>
+            <div class="cat">Business</div>
+          </div>
+        </button>
+
+        <button class="starter-card" data-template="keynote_speech">
+          <div class="starter-icon-circle" style="background:rgba(168,85,247,0.12); color:#c084fc; border-color:rgba(168,85,247,0.25);">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+          </div>
+          <div class="info">
+            <div class="title">Inspiring Keynote</div>
+            <div class="cat">Keynote</div>
+          </div>
+        </button>
+
+        <button class="starter-card active" data-template="youtube_video">
+          <div class="starter-icon-circle" style="background:rgba(244,63,94,0.12); color:#fb7185; border-color:rgba(244,63,94,0.25);">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>
+          </div>
+          <div class="info">
+            <div class="title">High-Engagement ...</div>
+            <div class="cat">Content creation</div>
+          </div>
+        </button>
+
+        <button class="starter-card" data-template="wedding_toast">
+          <div class="starter-icon-circle" style="background:rgba(245,158,11,0.12); color:#fbbf24; border-color:rgba(245,158,11,0.25);">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+          </div>
+          <div class="info">
+            <div class="title">Heartfelt Celebrat...</div>
+            <div class="cat">Personal</div>
+          </div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Voice Guide Card -->
+    <div class="voice-guide-card">
+      <div class="voice-guide-top">
+        <div class="voice-guide-info">
+          <div class="voice-speaker-box">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+          </div>
+          <div>
+            <div class="voice-guide-title">Voice Guide</div>
+            <div class="voice-guide-sub">Hear the script read with clear pacing and natural pauses before you record.</div>
+          </div>
+        </div>
+        <div class="switch-row" id="cockpit-voice-switch">
+          <div class="switch-track">
+            <div class="switch-knob"></div>
+          </div>
+          <span class="switch-label" id="cockpit-voice-label">Off</span>
+        </div>
+      </div>
+
+      <div class="voice-guide-bottom">
+        <div class="volume-mode-group">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+          <span>Volume mode</span>
+          <div class="segmented-ctrl">
+            <button class="seg-btn active" id="seg-normal">Normal</button>
+            <button class="seg-btn" id="seg-loud">Loud</button>
+          </div>
+        </div>
+
+        <div class="voice-actions">
+          <button class="btn-voice-settings" id="btn-cockpit-settings">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/></svg>
+            <span>Voice settings</span>
+          </button>
+          <button class="btn-test-speaker" id="btn-cockpit-test">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            <span>Test speaker</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Tools (4 Cards) -->
+    <div class="tools-grid">
+      <button class="tool-card" id="cockpit-edit-btn">
+        <div class="tool-icon-box" style="background:rgba(6,182,212,0.12); color:#22d3ee; border:1px solid rgba(6,182,212,0.25);">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        </div>
+        <div>
+          <div class="name">Edit script</div>
+          <div class="shortcut">Shortcut <kbd>E</kbd></div>
+        </div>
+      </button>
+
+      <button class="tool-card" id="cockpit-lib-btn">
+        <div class="tool-icon-box" style="background:rgba(168,85,247,0.12); color:#c084fc; border:1px solid rgba(168,85,247,0.25);">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></svg>
+        </div>
+        <div>
+          <div class="name">Script library</div>
+          <div class="shortcut">Shortcut <kbd>B</kbd></div>
+        </div>
+      </button>
+
+      <button class="tool-card" id="cockpit-a11y-btn">
+        <div class="tool-icon-box" style="background:rgba(245,158,11,0.12); color:#fbbf24; border:1px solid rgba(245,158,11,0.25);">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+        </div>
+        <div>
+          <div class="name">Accessibility</div>
+          <div class="shortcut" id="cockpit-a11y-label">High contrast: off</div>
+        </div>
+      </button>
+
+      <button class="tool-card" id="cockpit-shortcuts-btn">
+        <div class="tool-icon-box" style="background:rgba(59,130,246,0.12); color:#60a5fa; border:1px solid rgba(59,130,246,0.25);">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"/></svg>
+        </div>
+        <div>
+          <div class="name">Shortcuts</div>
+          <div class="shortcut">Press <kbd>?</kbd></div>
+        </div>
+      </button>
+    </div>
+
+    <!-- Bottom Actions (3 Buttons) -->
+    <div class="cockpit-actions">
+      <button class="btn-start-hero" id="cockpit-start-btn">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M7 4.5v15a1 1 0 0 0 1.5.9l12-7.5a1 1 0 0 0 0-1.8l-12-7.5A1 1 0 0 0 7 4.5z"/></svg>
+        <span>Start teleprompter</span>
+        <kbd>Space</kbd>
+      </button>
+      <button class="btn-countdown" id="cockpit-3s-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span>3s countdown</span>
+      </button>
+      <button class="btn-countdown" id="cockpit-5s-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span>5s countdown</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<header class="topbar">
+  <!-- Left: Studio Brand & Active Script Hub -->
+  <div class="nav-group nav-left">
+    <div class="brand-pill" title="TelePrompt Studio Pro">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 6h16M4 12h10M4 18h14"/></svg>
+      </div>
+      <span class="brand-text">TelePrompt</span>
+    </div>
+
+    <div class="nav-divider"></div>
+
+    <!-- Active Script Selector Pill -->
+    <div class="script-badge" title="Active Script: Investor Pitch Deck">
+      <div class="script-status-dot"></div>
+      <button class="script-title-btn" id="script-title-btn" title="Click to rename script">
+        <span id="script-title-text">Investor Pitch Deck</span>
+      </button>
+      <button class="mini-tool-btn" id="edit-script-btn" title="Edit Script Content (E)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>
+      </button>
+      <button class="mini-tool-btn" id="library-btn" title="Open Script Library (B)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Center: Master Broadcast Transport Deck -->
+  <div class="nav-group nav-center">
+    <div class="transport-dock">
+      <!-- Restart -->
+      <button class="transport-btn" id="restart" title="Restart to Beginning (R)" aria-label="Restart">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+      </button>
+
+      <!-- 3s Countdown Delay -->
+      <button class="countdown-badge" id="countdown-btn" data-countdown="3" title="Start with 3-second countdown">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="countdown-icon"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
+        <span>3s Delay</span>
+      </button>
+
+      <!-- Hero Play / Pause -->
+      <button class="hero-play-btn" id="play" title="Play / Pause (Spacebar)" aria-label="Play / Pause">
+        <svg id="play-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M7 4.5v15a1 1 0 0 0 1.5.9l12-7.5a1 1 0 0 0 0-1.8l-12-7.5A1 1 0 0 0 7 4.5z"/>
+        </svg>
+        <span class="hero-spacebar-hint">Space</span>
+      </button>
+
+      <!-- Save Bookmark -->
+      <button class="transport-btn" id="bookmark" title="Bookmark current reading position (S)" aria-label="Save Bookmark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+      </button>
+
+      <div class="transport-divider"></div>
+
+      <!-- Live Broadcast Clock -->
+      <div class="broadcast-clock" title="Elapsed Time">
+        <span class="clock-live-indicator" id="live-indicator"></span>
+        <span class="clock-digits" id="timer">0:00</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Precision Controls & Studio Tools -->
+  <div class="nav-group nav-right">
+    <!-- Speed Stepper -->
+    <div class="stepper-capsule" title="Prompter Scroll Speed (WPM)">
+      <span class="stepper-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <span class="hide-sm">Speed</span>
+      </span>
+      <button class="step-btn" id="speed-down" title="Slow down (-5)">−</button>
+      <output class="stepper-val" id="speed-out">16</output>
+      <button class="step-btn" id="speed-up" title="Speed up (+5)">+</button>
+      <input type="range" id="speed" min="5" max="80" value="16" class="hidden-slider" aria-label="Scroll speed">
+    </div>
+
+    <!-- Font Size Stepper -->
+    <div class="stepper-capsule" title="Text Font Size (px)">
+      <span class="stepper-label">
+        <span class="font-icon-aa">Aa</span>
+      </span>
+      <button class="step-btn" id="font-down" title="Smaller font (-2px)">−</button>
+      <output class="stepper-val" id="font-out">40px</output>
+      <button class="step-btn" id="font-up" title="Larger font (+2px)">+</button>
+      <input type="range" id="font" min="20" max="80" value="40" class="hidden-slider" aria-label="Font size">
+    </div>
+
+    <!-- Audio / Voice Guide -->
+    <button class="voice-guide-btn active" id="speaker" title="Voice Guide / Audio Speaker (A)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="voice-icon"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+      <span class="hide-md voice-text">Voice ON</span>
+      <span class="soundwaves" id="soundwaves">
+        <span class="wave wave-1"></span>
+        <span class="wave wave-2"></span>
+        <span class="wave wave-3"></span>
+      </span>
+    </button>
+
+    <!-- Mirror Mode -->
+    <button class="studio-icon-btn hide-sm" id="mirror" title="Mirror Display (M) - For Beam Splitter Glass" aria-label="Mirror display">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18"/><path d="M8 7 3 12l5 5z"/><path d="m16 7 5 5-5 5z"/></svg>
+    </button>
+
+    <!-- Theme Dropdown -->
+    <div class="theme-select-wrapper hide-md">
+      <select id="theme" aria-label="Color Theme">
+        <option value="blue">🔵 Studio Blue</option>
+        <option value="black">⚫ OLED Dark</option>
+        <option value="contrast">🟡 WCAG AAA</option>
+      </select>
+    </div>
+
+    <!-- Fullscreen -->
+    <button class="studio-icon-btn" id="fullscreen-btn" title="Toggle Fullscreen (F)" aria-label="Toggle Fullscreen">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+    </button>
+  </div>
+</header>
+
+<main class="stage-wrap">
+  <section class="stage" id="stage">
+    <div class="guide" aria-hidden="true"></div>
+    <div class="scroller" id="scroller">
+      <article class="script" id="script" contenteditable="false">
+        <p>Good morning, everyone. Thank you for taking the time to be here today.</p>
+        <p>Most assessment tools treat every question as equal. An easy question and an expert-level question shouldn't have the same meaning when we're evaluating someone's ability.</p>
+        <p>So the system looks at the difficulty of the question, whether the learner answered correctly, and even the possibility of guessing. This helps us understand the learner's actual ability rather than simply saying, "You got 70 percent, so your ability is 70 percent."</p>
+        <p>The second concept is Subject-as-Data. We don't want to build one assessment system for Python, another for medicine, another for law, and another for system design.</p>
+        <p>Instead, the assessment engine stays the same, and the subject becomes the data that we give to the engine. So if tomorrow we want to support a new domain, we add content — not code.</p>
+        <p>That is what lets us scale across subjects, institutions and learners without rebuilding the core every time.</p>
+        <p>Thank you. I'd be glad to take your questions.</p>
+      </article>
+    </div>
+  </section>
+</main>
+
+<footer class="statusbar">
+  <span>Progress<b id="stat-progress">0%</b></span>
+  <span>WPM<b id="stat-wpm">0</b></span>
+  <span>Words<b id="stat-words">0</b></span>
+  <span class="hide-sm">Est. total<b id="stat-total">0:00</b></span>
+</footer>
+<div class="progress" id="progress"></div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const scroller = $("scroller"), root = document.documentElement;
+  let playing = false, last = 0, elapsed = 0, carry = 0;
+
+  const words = $("script").innerText.trim().split(/\s+/).length;
+  $("stat-words").textContent = words;
+
+  const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+  const playIcon = '<path d="M7 4.5v15a1 1 0 0 0 1.5.9l12-7.5a1 1 0 0 0 0-1.8l-12-7.5A1 1 0 0 0 7 4.5z"/>';
+  const pauseIcon = '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>';
+
+  function updateStats() {
+    const max = scroller.scrollHeight - scroller.clientHeight;
+    const p = max > 0 ? scroller.scrollTop / max : 0;
+    $("stat-progress").textContent = (p * 100).toFixed(1) + "%";
+    $("progress").style.width = p * 100 + "%";
+    const wpm = elapsed > 1 ? Math.round((p * words) / (elapsed / 60)) : 0;
+    $("stat-wpm").textContent = wpm;
+    $("stat-total").textContent = p > 0.02 ? fmt(elapsed / p) : "–";
+    $("timer").textContent = fmt(elapsed);
+  }
+
+  function tick(t) {
+    if (!playing) return;
+    const dt = (t - last) / 1000; last = t;
+    elapsed += dt;
+    carry += +$("speed").value * 4 * dt;          // px per second
+    const step = Math.floor(carry); carry -= step;
+    scroller.scrollTop += step;
+    updateStats();
+    if (scroller.scrollTop >= scroller.scrollHeight - scroller.clientHeight) return toggle(false);
+    requestAnimationFrame(tick);
+  }
+
+  function toggle(force) {
+    playing = typeof force === "boolean" ? force : !playing;
+    $("play-icon").innerHTML = playing ? pauseIcon : playIcon;
+    $("play").classList.toggle("playing", playing);
+    const liveInd = $("live-indicator");
+    if (liveInd) liveInd.classList.toggle("live", playing);
+    if (playing) { last = performance.now(); requestAnimationFrame(tick); }
+  }
+
+  $("play").onclick = () => toggle();
+  $("restart").onclick = () => { toggle(false); scroller.scrollTop = 0; elapsed = 0; updateStats(); };
+
+  // Countdown delay (e.g. 3s)
+  document.querySelectorAll("[data-countdown]").forEach(b => b.onclick = () => {
+    let n = +b.dataset.countdown; toggle(false);
+    $("timer").textContent = `0:0${n}`;
+    const liveInd = $("live-indicator");
+    if (liveInd) liveInd.classList.add("live");
+    const t = setInterval(() => {
+      n--;
+      if (n > 0) {
+        $("timer").textContent = `0:0${n}`;
+      } else {
+        clearInterval(t);
+        toggle(true);
+      }
+    }, 1000);
+  });
+
+  // Speed steppers & range
+  function setSpeedVal(val) {
+    val = Math.max(5, Math.min(80, val));
+    $("speed").value = val;
+    $("speed-out").textContent = val;
+  }
+  $("speed").oninput = e => setSpeedVal(+e.target.value);
+  $("speed-down").onclick = () => setSpeedVal(+$("speed").value - 5);
+  $("speed-up").onclick = () => setSpeedVal(+$("speed").value + 5);
+
+  // Font steppers & range
+  function setFontVal(val) {
+    val = Math.max(20, Math.min(80, val));
+    $("font").value = val;
+    root.style.setProperty("--font-size", val + "px");
+    $("font-out").textContent = val + "px";
+  }
+  $("font").oninput = e => setFontVal(+e.target.value);
+  $("font-down").onclick = () => setFontVal(+$("font").value - 4);
+  $("font-up").onclick = () => setFontVal(+$("font").value + 4);
+
+  // Bookmark position with notification
+  function showToast(msg) {
+    const existing = document.querySelector(".studio-toast");
+    if (existing) existing.remove();
+    const toast = document.createElement("div");
+    toast.className = "studio-toast";
+    toast.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#22c55e" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> <span>${msg}</span>`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2200);
+  }
+  $("bookmark").onclick = () => {
+    localStorage.setItem("teleprompter_demo_scroll", scroller.scrollTop.toString());
+    showToast("Bookmark position saved!");
+  };
+
+  // Fullscreen
+  $("fullscreen-btn").onclick = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  };
+
+  $("mirror").onclick = e => { $("stage").classList.toggle("mirror"); e.currentTarget.classList.toggle("active"); };
+  $("speaker").onclick = e => {
+    e.currentTarget.classList.toggle("active");
+    const active = e.currentTarget.classList.contains("active");
+    const label = e.currentTarget.querySelector(".voice-text");
+    if (label) label.textContent = active ? "Voice ON" : "Voice OFF";
+  };
+
+  // Script title renaming / editing
+  $("script-title-btn").onclick = $("edit-script-btn").onclick = () => {
+    const cur = $("script-title-text").textContent;
+    const updated = prompt("Enter script title:", cur);
+    if (updated && updated.trim()) {
+      $("script-title-text").textContent = updated.trim();
+      showToast("Script title updated");
+    }
+  };
+  $("library-btn").onclick = () => {
+    showToast("Library: 4 scripts ready in your workspace");
+  };
+
+  // Cockpit Modal & Starter Templates Logic
+  const DEMO_TEMPLATES = {
+    investor_pitch: {
+      title: "Investor Pitch Deck",
+      words: 118,
+      delivery: "0:54",
+      wpm: "130 WPM target",
+      text: `<p>Hello everyone. Today, over 85% of presenters report acute stage anxiety and irregular pacing during high-stakes presentations.</p>
+<p>Current teleprompters are dumb scrolling screens. They don't guide your voice, they don't teach you where to pause, and they fail in noisy acoustic halls.</p>
+<p>We created TelePrompt Pro—the world's first AI-assisted teleprompter with Best Loud Audio Mode, natural cadence cueing, and interactive sentence guidance.</p>
+<p>In the last 90 days alone, we reached over 45,000 active keynoters, podcasters, and YouTube creators across 32 countries.</p>
+<p>We are currently raising our seed round to expand real-time speech intelligence across all platforms. Join us on this journey. Thank you!</p>`
+    },
+    keynote_speech: {
+      title: "Inspiring Keynote",
+      words: 96,
+      delivery: "0:44",
+      wpm: "130 WPM target",
+      text: `<p>Good morning honored guests, colleagues, and visionary leaders.</p>
+<p>We gather today at an unprecedented moment in human history. The tools we build today will determine the trajectory of tomorrow.</p>
+<p>True leadership is not about having all the answers—it is about having the courage to ask the boldest questions.</p>
+<p>When we empower individuals with accessible, human-centric technology, we unleash innovation in every corner of the world.</p>
+<p>Let us build that future together—not with hesitation, but with bold, unwavering optimism. Thank you!</p>`
+    },
+    youtube_video: {
+      title: "High-Engagement YouTube Script",
+      words: 83,
+      delivery: "0:38",
+      wpm: "130 WPM target",
+      text: `<p>Wait! Don't scroll away. If you speak on camera or present to clients, this one trick will instantly make you 10x more persuasive!</p>
+<p>Welcome back to the channel, friends! Today we are breaking down the exact vocal delivery techniques used by the world's highest-paid keynote speakers.</p>
+<p>Notice what happens when you pause right before a key takeaway. The audience leans in immediately.</p>
+<p>Next, ensure your pitch rises with curious questions and lands with steady conviction on statements.</p>
+<p>If you found this valuable, smash that like button, subscribe to the channel, and drop your thoughts in the comments below!</p>`
+    },
+    wedding_toast: {
+      title: "Heartfelt Celebration Toast",
+      words: 112,
+      delivery: "0:51",
+      wpm: "130 WPM target",
+      text: `<p>Good evening everyone! Could I please have everyone's attention for just two short minutes?</p>
+<p>For those who don't know me, I have had the incredible joy of being best friends with our newlywed for more than ten years.</p>
+<p>I still remember the day they met. Within five minutes of hearing the story, I knew something truly special had just begun.</p>
+<p>They complement each other in every possible way—bringing kindness, spontaneous laughter, and deep empathy into every room they enter.</p>
+<p>Please raise your glasses high with me. To a lifetime of boundless adventure, deep joy, and everlasting love. To our wonderful couple! Cheers!</p>`
+    }
+  };
+
+  function selectCockpitTemplate(id) {
+    const tmpl = DEMO_TEMPLATES[id];
+    if (!tmpl) return;
+    document.querySelectorAll(".starter-card").forEach(c => {
+      c.classList.toggle("active", c.dataset.template === id);
+    });
+    $("cockpit-title").textContent = tmpl.title;
+    $("script-title-text").textContent = tmpl.title;
+    $("cockpit-words").textContent = `${tmpl.words} words`;
+    $("cockpit-delivery").textContent = `~ ${tmpl.delivery} delivery`;
+    $("cockpit-wpm").textContent = tmpl.wpm;
+    $("script").innerHTML = tmpl.text;
+    scroller.scrollTop = 0;
+    elapsed = 0;
+    const newWords = $("script").innerText.trim().split(/\s+/).length;
+    $("stat-words").textContent = newWords;
+    updateStats();
+  }
+
+  // Set default initial template to High-Engagement YouTube Script (matching screenshot)
+  selectCockpitTemplate("youtube_video");
+
+  document.querySelectorAll(".starter-card").forEach(c => {
+    c.onclick = () => selectCockpitTemplate(c.dataset.template);
+  });
+
+  // Cockpit Action Buttons
+  const cockpitModal = $("cockpit-modal");
+  $("cockpit-start-btn").onclick = () => {
+    cockpitModal.classList.add("hidden");
+    toggle(true);
+  };
+  $("cockpit-3s-btn").onclick = () => {
+    cockpitModal.classList.add("hidden");
+    $("countdown-btn").click();
+  };
+  $("cockpit-5s-btn").onclick = () => {
+    cockpitModal.classList.add("hidden");
+    let n = 5; toggle(false);
+    $("timer").textContent = `0:0${n}`;
+    const liveInd = $("live-indicator");
+    if (liveInd) liveInd.classList.add("live");
+    const t = setInterval(() => {
+      n--;
+      if (n > 0) {
+        $("timer").textContent = `0:0${n}`;
+      } else {
+        clearInterval(t);
+        toggle(true);
+      }
+    }, 1000);
+  };
+
+  // Re-open Cockpit anytime from brand icon
+  document.querySelector(".brand-pill").onclick = () => {
+    toggle(false);
+    scroller.scrollTop = 0;
+    cockpitModal.classList.remove("hidden");
+  };
+
+  // Voice switch
+  let cockpitVoiceOn = false;
+  $("cockpit-voice-switch").onclick = () => {
+    cockpitVoiceOn = !cockpitVoiceOn;
+    $("cockpit-voice-switch").classList.toggle("on", cockpitVoiceOn);
+    $("cockpit-voice-label").textContent = cockpitVoiceOn ? "On" : "Off";
+    if ($("speaker")) {
+      $("speaker").classList.toggle("active", cockpitVoiceOn);
+      const label = $("speaker").querySelector(".voice-text");
+      if (label) label.textContent = cockpitVoiceOn ? "Voice ON" : "Voice OFF";
+    }
+  };
+
+  // Volume mode segmented buttons
+  $("seg-normal").onclick = () => {
+    $("seg-normal").classList.add("active");
+    $("seg-loud").classList.remove("active");
+    showToast("Volume mode set to Normal");
+  };
+  $("seg-loud").onclick = () => {
+    $("seg-loud").classList.add("active");
+    $("seg-normal").classList.remove("active");
+    showToast("Best Loud Audio Mode 100% Boost ON");
+  };
+
+  // Quick Tools
+  $("cockpit-edit-btn").onclick = () => {
+    $("edit-script-btn").click();
+  };
+  $("cockpit-lib-btn").onclick = () => {
+    showToast("Script Library: 4 starter templates loaded");
+  };
+  $("cockpit-a11y-btn").onclick = () => {
+    const isContrast = $("theme").value === "contrast";
+    const nextTheme = isContrast ? "blue" : "contrast";
+    $("theme").value = nextTheme;
+    $("theme").dispatchEvent(new Event("change"));
+    $("cockpit-a11y-label").textContent = `High contrast: ${nextTheme === "contrast" ? "on" : "off"}`;
+    showToast(`High contrast ${nextTheme === "contrast" ? "enabled" : "disabled"}`);
+  };
+  $("cockpit-shortcuts-btn").onclick = () => {
+    showToast("Shortcuts: Space=Play, R=Reset, S=Bookmark, F=Fullscreen, M=Mirror");
+  };
+  $("btn-cockpit-settings").onclick = () => {
+    showToast("Voice Settings: Speech synthesis pacing & pitch ready");
+  };
+  $("btn-cockpit-test").onclick = () => {
+    showToast("Speaker test: Audio output calibrated at 130 WPM");
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance("Testing voice guide speaker. Clear natural cadence and studio pacing active.");
+      window.speechSynthesis.speak(u);
+    }
+  };
+
+  document.addEventListener("keydown", e => {
+    if (e.code === "Space") {
+      if (!cockpitModal.classList.contains("hidden")) {
+        e.preventDefault();
+        $("cockpit-start-btn").click();
+        return;
+      }
+      e.preventDefault();
+      toggle();
+    }
+    if (e.key === "r" || e.key === "R") $("restart").click();
+    if (e.key === "s" || e.key === "S") $("bookmark").click();
+    if (e.key === "f" || e.key === "F") $("fullscreen-btn").click();
+    if (e.key === "m" || e.key === "M") $("mirror").click();
+    if (e.key === "ArrowUp") scroller.scrollTop -= 60;
+    if (e.key === "ArrowDown") scroller.scrollTop += 60;
+  });
+  scroller.addEventListener("scroll", updateStats);
+  updateStats();
+
+  // Developer Console Signature (Skill: developer-console-signature)
+  (function initConsoleSignature() {
+    if (typeof window === 'undefined') return;
+    const bannerStyle = "font-size: 13px; font-weight: 800; color: #ffffff; background: linear-gradient(135deg, #f59e0b, #d97706); padding: 5px 12px; border-radius: 6px;";
+    const labelStyle = "font-weight: 700; color: #f59e0b;";
+    const valStyle = "color: #94a3b8;";
+    const linkStyle = "color: #38bdf8; text-decoration: underline;";
+    console.log("%c🎬 TelePrompt Pro — Studio Teleprompter & Loud Audio Coach", bannerStyle);
+    console.log(
+      "%c👨‍💻 Architect:   %cKarthikeyan T (@carthworks)\n" +
+      "%c✉️  Email:       %ctkarthikeyan@gmail.com\n" +
+      "%c🐙 GitHub:      %chttps://github.com/carthworks/TelePrompt\n" +
+      "%c📜 License:     %cApache-2.0\n" +
+      "%c🔒 Privacy:     %c100% Client-Side. Zero server telemetry.",
+      labelStyle, valStyle,
+      labelStyle, valStyle,
+      labelStyle, linkStyle,
+      labelStyle, valStyle,
+      labelStyle, valStyle
+    );
+    window.TelePrompt = {
+      version: "2.5.0",
+      developer: "Karthikeyan T (@carthworks)",
+      help: () => console.log("Shortcuts: Space=Play/Pause, R=Reset, S=Bookmark, F=Fullscreen, M=Mirror, A=Audio, L=Loud Mode")
+    };
+  })();
+</script>
+</body>
+</html>

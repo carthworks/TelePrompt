@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teleprompter Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #070b14;
+    --panel: #0e1422;
+    --border: #1c2438;
+    --surface: #151d2f;
+    --surface-hover: #1d2740;
+    --text: #e6ebf5;
+    --text-dim: #8591a8;
+    --text-faint: #5b6680;
+    --accent: #22d3ee;
+    --accent-soft: rgba(34, 211, 238, .12);
+    --home: #3b82f6;
+    --violet: #a78bfa;
+    --amber: #fbbf24;
+    --stage-bg: #0b1226;
+    --stage-edge: #1a2544;
+    --read-text: #f4f7fc;
+    --guide: rgba(34, 211, 238, .10);
+    --guide-line: rgba(34, 211, 238, .55);
+    --radius: 12px;
+    --font-size: 40px;
+    --line-height: 1.6;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: "Inter", system-ui, sans-serif;
+    background: radial-gradient(1200px 600px at 50% -10%, #0f1a33 0%, var(--bg) 60%);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font: inherit; color: inherit; cursor: pointer; border: none; background: none; }
+  svg { flex-shrink: 0; }
+  .ico { width: 20px; height: 20px; }
+  .hidden { display: none !important; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* =========================================================
+     HOME VIEW
+     ========================================================= */
+  .home {
+    min-height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    padding: 40px 16px;
+  }
+  .home-card {
+    width: 100%; max-width: 960px;
+    background: linear-gradient(180deg, rgba(21,29,47,.7), rgba(14,20,34,.9));
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 40px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.5);
+    display: flex; flex-direction: column; gap: 28px;
+  }
+
+  /* Hero */
+  .hero { text-align: center; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 14px; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent);
+    border: 1px solid rgba(34,211,238,.25);
+    font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  }
+  .eyebrow svg { width: 14px; height: 14px; }
+  .hero h1 {
+    margin-top: 18px;
+    font-size: clamp(28px, 5vw, 46px);
+    font-weight: 800; letter-spacing: -.02em; line-height: 1.1;
+  }
+  .meta {
+    margin-top: 14px;
+    display: flex; justify-content: center; flex-wrap: wrap; gap: 8px;
+  }
+  .meta span {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--border);
+    font-size: 13px; color: var(--text-dim);
+  }
+  .meta svg { width: 14px; height: 14px; color: var(--accent); }
+  .meta b { color: var(--text); font-weight: 600; }
+
+  /* Section labels */
+  .section-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 12px;
+  }
+  .section-head h2 {
+    font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .section-head small { font-size: 12px; color: var(--text-faint); }
+
+  /* Templates */
+  .templates { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .tpl {
+    text-align: left;
+    padding: 14px; border-radius: var(--radius);
+    background: var(--surface); border: 1px solid var(--border);
+    display: flex; gap: 12px; align-items: center;
+    transition: border-color .15s, background .15s, transform .15s;
+    min-width: 0;
+  }
+  .tpl:hover { background: var(--surface-hover); transform: translateY(-1px); }
+  .tpl.active { border-color: var(--accent); background: linear-gradient(180deg, rgba(34,211,238,.10), var(--surface)); }
+  .tpl-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: grid; place-items: center;
+    background: var(--c, var(--accent-soft)); color: var(--ci, var(--accent));
+  }
+  .tpl-icon svg { width: 18px; height: 18px; }
+  .tpl-text { min-width: 0; }
+  .tpl-text strong { display: block; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tpl-text span { font-size: 12px; color: var(--text-dim); }
+
+  /* Audio coach panel */
+  .audio {
+    border-radius: 16px;
+    border: 1px solid rgba(34,211,238,.25);
+    background:
+      radial-gradient(500px 200px at 100% 0%, rgba(167,139,250,.14), transparent 70%),
+      linear-gradient(180deg, rgba(34,211,238,.06), rgba(21,29,47,.6));
+    padding: 20px;
+  }
+  .audio-top { display: flex; align-items: center; gap: 16px; }
+  .audio-badge {
+    width: 48px; height: 48px; border-radius: 14px;
+    display: grid; place-items: center;
+    background: var(--accent-soft); color: var(--accent);
+    border: 1px solid rgba(34,211,238,.3);
+  }
+  .audio-copy { flex: 1; min-width: 0; }
+  .audio-copy h3 { font-size: 17px; font-weight: 700; }
+  .audio-copy p { font-size: 13px; color: var(--text-dim); margin-top: 3px; }
+
+  /* Toggle switch */
+  .switch { display: inline-flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; color: var(--text-dim); }
+  .switch input { display: none; }
+  .switch .track {
+    width: 46px; height: 26px; border-radius: 999px;
+    background: var(--border); position: relative; transition: background .2s;
+  }
+  .switch .track::after {
+    content: ""; position: absolute; top: 3px; left: 3px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: #fff; transition: transform .2s;
+  }
+  .switch input:checked + .track { background: var(--accent); }
+  .switch input:checked + .track::after { transform: translateX(20px); }
+  .switch input:checked ~ .state { color: var(--accent); }
+
+  .audio-bottom {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border);
+  }
+  .segment {
+    display: inline-flex; padding: 3px; border-radius: 10px;
+    background: var(--surface); border: 1px solid var(--border);
+  }
+  .segment button {
+    padding: 7px 14px; border-radius: 8px;
+    font-size: 13px; font-weight: 600; color: var(--text-dim);
+  }
+  .segment button.on { background: var(--surface-hover); color: var(--text); box-shadow: inset 0 0 0 1px var(--border); }
+  .segment button.on[data-mode="loud"] { color: var(--amber); }
+  .seg-label { font-size: 13px; color: var(--text-dim); display: flex; align-items: center; gap: 10px; }
+  .seg-label svg { width: 16px; height: 16px; color: var(--amber); }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    height: 38px; padding: 0 14px; border-radius: 10px;
+    font-size: 13px; font-weight: 600;
+    background: var(--surface); border: 1px solid var(--border);
+    transition: background .15s, border-color .15s;
+  }
+  .btn:hover { background: var(--surface-hover); }
+  .btn svg { width: 16px; height: 16px; }
+  .btn-accent { color: var(--accent); border-color: rgba(34,211,238,.35); background: var(--accent-soft); }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* Quick actions */
+  .actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .action {
+    display: flex; align-items: center; gap: 12px; text-align: left;
+    padding: 14px; border-radius: var(--radius);
+    background: var(--surface); border: 1px solid var(--border);
+    transition: background .15s, transform .15s;
+  }
+  .action:hover { background: var(--surface-hover); transform: translateY(-1px); }
+  .action .tpl-icon { border: 1px solid currentColor; border-color: color-mix(in srgb, var(--ci) 40%, transparent); }
+  .action strong { display: block; font-size: 14px; font-weight: 600; }
+  .action span { font-size: 12px; color: var(--text-dim); }
+  kbd {
+    font-family: "JetBrains Mono", monospace; font-size: 11px;
+    padding: 1px 6px; border-radius: 5px;
+    background: var(--bg); border: 1px solid var(--border); color: var(--text-dim);
+  }
+
+  /* CTA */
+  .cta { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; }
+  .start {
+    height: 64px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    background: linear-gradient(90deg, #2563eb, #0891b2 60%, #0d9488);
+    color: #fff; font-size: 18px; font-weight: 700;
+    box-shadow: 0 10px 30px rgba(8,145,178,.35);
+    transition: transform .15s, box-shadow .15s;
+  }
+  .start:hover { transform: translateY(-2px); box-shadow: 0 14px 36px rgba(8,145,178,.45); }
+  .start svg { width: 22px; height: 22px; }
+  .start kbd { background: rgba(255,255,255,.15); border-color: rgba(255,255,255,.25); color: #fff; }
+  .countdown-btn {
+    height: 64px; border-radius: 14px;
+    background: var(--surface); border: 1px solid var(--border);
+    font-size: 16px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .countdown-btn:hover { background: var(--surface-hover); }
+  .countdown-btn svg { width: 18px; height: 18px; color: var(--text-dim); }
+
+  /* =========================================================
+     PROMPTER VIEW
+     ========================================================= */
+  .prompter { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+
+  .topbar {
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px;
+    height: 64px; padding: 0 20px;
+    background: var(--panel); border-bottom: 1px solid var(--border);
+    position: relative; z-index: 10;
+  }
+  .nav-group { display: flex; align-items: center; gap: 8px; }
+  .nav-left { min-width: 0; }
+  .nav-center { justify-content: center; }
+  .nav-right { justify-content: flex-end; }
+  .divider { width: 1px; height: 28px; background: var(--border); margin: 0 6px; }
+
+  .icon-btn {
+    width: 40px; height: 40px; display: grid; place-items: center;
+    border-radius: 10px; background: var(--surface); color: var(--text-dim);
+    transition: background .15s, color .15s;
+  }
+  .icon-btn:hover { background: var(--surface-hover); color: var(--text); }
+  .icon-btn.active { color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+
+  .home-btn {
+    display: flex; align-items: center; gap: 8px;
+    height: 42px; padding: 0 16px 0 12px; border-radius: 10px;
+    background: var(--home); color: #fff; font-weight: 600; font-size: 14px;
+    box-shadow: 0 4px 14px rgba(59,130,246,.35);
+    transition: transform .15s, background .15s;
+  }
+  .home-btn:hover { background: #2563eb; transform: translateY(-1px); }
+
+  .script-title {
+    display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px;
+    border-radius: 10px; font-size: 14px; font-weight: 500; min-width: 0;
+  }
+  .script-title:hover { background: var(--surface); }
+  .script-title span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+  .script-title svg { width: 16px; height: 16px; color: var(--text-dim); }
+
+  .play-btn {
+    width: 48px; height: 48px; display: grid; place-items: center; border-radius: 50%;
+    background: var(--accent); color: #04202a;
+    box-shadow: 0 0 0 4px rgba(34,211,238,.15); transition: transform .15s;
+  }
+  .play-btn:hover { transform: scale(1.05); }
+  .pill {
+    height: 32px; padding: 0 12px; border-radius: 999px;
+    background: var(--surface); font-size: 13px; font-weight: 600; color: var(--text-dim);
+  }
+  .pill:hover { color: var(--text); background: var(--surface-hover); }
+  .timer { font-family: "JetBrains Mono", monospace; font-size: 15px; padding: 0 10px; min-width: 64px; text-align: center; }
+
+  .control {
+    display: flex; align-items: center; gap: 8px; padding: 0 10px; height: 40px;
+    border-radius: 10px; background: var(--surface); font-size: 12px; color: var(--text-dim);
+  }
+  .control label { font-weight: 500; }
+  .control output { font-family: "JetBrains Mono", monospace; color: var(--text); min-width: 36px; text-align: right; }
+  input[type=range] {
+    -webkit-appearance: none; appearance: none;
+    width: 90px; height: 4px; border-radius: 4px; background: var(--border); outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); cursor: pointer; }
+  input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border: none; border-radius: 50%; background: var(--accent); cursor: pointer; }
+  select {
+    height: 40px; padding: 0 10px; border-radius: 10px; border: none;
+    background: var(--surface); color: var(--text); font: inherit; font-size: 13px; cursor: pointer;
+  }
+
+  .stage-wrap { flex: 1; display: flex; justify-content: center; padding: 24px; min-height: 0; }
+  .stage {
+    position: relative; width: 100%; max-width: 1000px;
+    background: var(--stage-bg); border: 1px solid var(--stage-edge); border-radius: 18px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.5); overflow: hidden;
+  }
+  .scroller { height: 100%; overflow-y: auto; scrollbar-width: none; }
+  .scroller::-webkit-scrollbar { display: none; }
+  .script {
+    padding: 45vh 64px 55vh;
+    font-size: var(--font-size); line-height: var(--line-height);
+    font-weight: 500; color: var(--read-text); white-space: pre-wrap;
+  }
+  .stage.mirror .script { transform: scaleX(-1); }
+  .stage::before, .stage::after { content: ""; position: absolute; left: 0; right: 0; height: 30%; pointer-events: none; z-index: 2; }
+  .stage::before { top: 0; background: linear-gradient(var(--stage-bg) 10%, transparent); }
+  .stage::after { bottom: 0; background: linear-gradient(transparent, var(--stage-bg) 90%); }
+  .guide {
+    position: absolute; left: 0; right: 0; top: 42%;
+    height: calc(var(--font-size) * var(--line-height) * 1.15);
+    background: var(--guide); border-top: 1px solid var(--guide-line); border-bottom: 1px solid var(--guide-line);
+    pointer-events: none; z-index: 3;
+  }
+  .guide::before, .guide::after { content: ""; position: absolute; top: 50%; border: 9px solid transparent; transform: translateY(-50%); }
+  .guide::before { left: 10px; border-left-color: var(--accent); }
+  .guide::after { right: 10px; border-right-color: var(--accent); }
+
+  .countdown-overlay {
+    position: absolute; inset: 0; z-index: 5;
+    display: grid; place-items: center;
+    background: rgba(7,11,20,.7); backdrop-filter: blur(4px);
+    font-size: 140px; font-weight: 800; color: var(--accent);
+  }
+
+  .statusbar { display: flex; justify-content: center; gap: 28px; padding: 10px 20px 14px; font-size: 13px; color: var(--text-dim); }
+  .statusbar b { font-family: "JetBrains Mono", monospace; color: var(--text); font-weight: 500; margin-left: 6px; }
+  .progress { position: fixed; left: 0; bottom: 0; height: 3px; background: var(--accent); width: 0; transition: width .2s linear; }
+
+  /* =========================================================
+     MODALS
+     ========================================================= */
+  .modal {
+    position: fixed; inset: 0; z-index: 50;
+    display: grid; place-items: center; padding: 16px;
+    background: rgba(3,6,12,.7); backdrop-filter: blur(6px);
+  }
+  .modal-box {
+    width: 100%; max-width: 640px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 18px;
+    padding: 24px; box-shadow: 0 30px 80px rgba(0,0,0,.6);
+  }
+  .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .modal-head h3 { font-size: 18px; font-weight: 700; }
+  .field { display: block; margin-bottom: 14px; }
+  .field span { display: block; font-size: 12px; font-weight: 600; color: var(--text-dim); margin-bottom: 6px; }
+  .field input, .field textarea {
+    width: 100%; padding: 12px; border-radius: 10px;
+    background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    font: inherit; font-size: 15px; line-height: 1.6;
+  }
+  .field textarea { min-height: 260px; resize: vertical; }
+  .modal-foot { display: flex; justify-content: flex-end; gap: 8px; }
+  .shortcut-list { display: grid; grid-template-columns: 1fr auto; gap: 10px 20px; font-size: 14px; color: var(--text-dim); }
+  .shortcut-list kbd { font-size: 12px; padding: 3px 8px; justify-self: end; }
+
+  /* =========================================================
+     RESPONSIVE
+     ========================================================= */
+  @media (max-width: 1100px) {
+    .control label, .hide-md { display: none; }
+    input[type=range] { width: 70px; }
+  }
+  @media (max-width: 860px) {
+    .templates, .actions { grid-template-columns: repeat(2, 1fr); }
+    .cta { grid-template-columns: 1fr 1fr; }
+    .start { grid-column: 1 / -1; }
+  }
+  @media (max-width: 760px) {
+    .home-card { padding: 24px 18px; gap: 22px; }
+    .audio-top { flex-wrap: wrap; }
+    .topbar { grid-template-columns: auto 1fr; height: auto; padding: 10px 12px; row-gap: 10px; }
+    .nav-center { grid-column: 1 / -1; order: 3; }
+    .home-btn span, .script-title, .hide-sm { display: none; }
+    .stage-wrap { padding: 12px; }
+    .script { padding-left: 24px; padding-right: 24px; }
+    .statusbar { gap: 14px; flex-wrap: wrap; }
+  }
+  @media (max-width: 480px) {
+    .templates, .actions { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SVG icon sprite -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15a1 1 0 0 0 1.5.9l12-7.5a1 1 0 0 0 0-1.8l-12-7.5A1 1 0 0 0 7 4.5z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4Z"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-keys" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></symbol>
+    <symbol id="i-speaker" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></symbol>
+    <symbol id="i-headphones" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1v-6h3zM3 19a2 2 0 0 0 2 2h1v-6H3z"/></symbol>
+    <symbol id="i-megaphone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></symbol>
+    <symbol id="i-sparkle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8"/></symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></symbol>
+    <symbol id="i-rocket" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.3-2 5-2 5s3.7-.5 5-2c.7-.8.7-2.1-.1-2.9a2.2 2.2 0 0 0-2.9-.1z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.9A12.9 12.9 0 0 1 22 2c0 2.7-.8 7.5-6 11a22.4 22.4 0 0 1-4 2z"/><path d="M9 12H4s.6-3 2-4c1.6-1.1 5 0 5 0M12 15v5s3-.6 4-2c1.1-1.6 0-5 0-5"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4M8 22h8"/></symbol>
+    <symbol id="i-video" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="m22 8-6 4 6 4z"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21.2l8.8-8.8a5.5 5.5 0 0 0 0-7.8z"/></symbol>
+    <symbol id="i-restart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
+    <symbol id="i-bookmark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></symbol>
+    <symbol id="i-mirror" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M8 7 3 12l5 5z"/><path d="m16 7 5 5-5 5z"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  </defs>
+</svg>
+
+<!-- ============================ HOME ============================ -->
+<main class="home" id="view-home">
+  <div class="home-card">
+
+    <header class="hero">
+      <span class="eyebrow"><svg><use href="#i-sparkle"/></svg>Teleprompter &amp; Voice Coach</span>
+      <h1 id="home-title">Investor Pitch Deck</h1>
+      <div class="meta">
+        <span><svg><use href="#i-doc"/></svg><b id="home-words">0</b> words</span>
+        <span><svg><use href="#i-clock"/></svg>~<b id="home-time">0:00</b> delivery</span>
+        <span><svg><use href="#i-bolt"/></svg><b id="home-wpm">130</b> WPM target</span>
+      </div>
+    </header>
+
+    <section>
+      <div class="section-head">
+        <h2>Starter templates</h2>
+        <small>Click to load</small>
+      </div>
+      <div class="templates" id="templates"></div>
+    </section>
+
+    <section class="audio">
+      <div class="audio-top">
+        <div class="audio-badge"><svg class="ico"><use href="#i-speaker"/></svg></div>
+        <div class="audio-copy">
+          <h3>Voice Guide</h3>
+          <p>Hear the script read with clear pacing and natural pauses before you record.</p>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="voice-toggle">
+          <span class="track"></span>
+          <span class="state" id="voice-state">Off</span>
+        </label>
+      </div>
+      <div class="audio-bottom">
+        <div class="seg-label">
+          <svg><use href="#i-megaphone"/></svg>Volume mode
+          <div class="segment" id="loud-mode">
+            <button class="on" data-mode="normal">Normal</button>
+            <button data-mode="loud">Loud</button>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn" id="open-shortcuts-2"><svg><use href="#i-headphones"/></svg>Voice settings</button>
+          <button class="btn btn-accent" id="test-speaker"><svg><use href="#i-speaker"/></svg>Test speaker</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="actions">
+      <button class="action" id="open-editor">
+        <div class="tpl-icon" style="--c:rgba(34,211,238,.12);--ci:#22d3ee"><svg><use href="#i-edit"/></svg></div>
+        <div><strong>Edit script</strong><span>Shortcut <kbd>E</kbd></span></div>
+      </button>
+      <button class="action" id="open-library">
+        <div class="tpl-icon" style="--c:rgba(167,139,250,.12);--ci:#a78bfa"><svg><use href="#i-book"/></svg></div>
+        <div><strong>Script library</strong><span>Shortcut <kbd>B</kbd></span></div>
+      </button>
+      <button class="action" id="toggle-contrast">
+        <div class="tpl-icon" style="--c:rgba(251,191,36,.12);--ci:#fbbf24"><svg><use href="#i-eye"/></svg></div>
+        <div><strong>Accessibility</strong><span id="contrast-label">High contrast: off</span></div>
+      </button>
+      <button class="action" id="open-shortcuts">
+        <div class="tpl-icon" style="--c:rgba(59,130,246,.14);--ci:#60a5fa"><svg><use href="#i-keys"/></svg></div>
+        <div><strong>Shortcuts</strong><span>Press <kbd>?</kbd></span></div>
+      </button>
+    </section>
+
+    <section class="cta">
+      <button class="start" id="start"><svg><use href="#i-play"/></svg>Start teleprompter <kbd>Space</kbd></button>
+      <button class="countdown-btn" data-countdown="3"><svg><use href="#i-clock"/></svg>3s countdown</button>
+      <button class="countdown-btn" data-countdown="5"><svg><use href="#i-clock"/></svg>5s countdown</button>
+    </section>
+
+  </div>
+</main>
+
+<!-- ========================== PROMPTER ========================== -->
+<div class="prompter hidden" id="view-prompter">
+  <header class="topbar">
+    <div class="nav-group nav-left">
+      <button class="home-btn" id="go-home" title="Home (Esc)"><svg class="ico"><use href="#i-home"/></svg><span>Home</span></button>
+      <div class="divider hide-sm"></div>
+      <button class="script-title" id="title-edit" title="Edit script (E)"><svg><use href="#i-edit"/></svg><span id="bar-title">Script</span></button>
+    </div>
+
+    <div class="nav-group nav-center">
+      <button class="pill hide-sm" data-countdown="3">3s</button>
+      <button class="icon-btn" id="restart" title="Restart (R)"><svg class="ico"><use href="#i-restart"/></svg></button>
+      <button class="play-btn" id="play" title="Play / Pause (Space)"><svg class="ico"><use id="play-use" href="#i-play"/></svg></button>
+      <button class="icon-btn" id="bookmark" title="Bookmark / jump (M)"><svg class="ico"><use href="#i-bookmark"/></svg></button>
+      <button class="pill hide-sm" data-countdown="5">5s</button>
+      <span class="timer" id="timer">0:00</span>
+    </div>
+
+    <div class="nav-group nav-right">
+      <div class="control"><label for="speed">Speed</label><input type="range" id="speed" min="1" max="60" value="16"><output id="speed-out">16</output></div>
+      <div class="control"><label for="font">Font</label><input type="range" id="font" min="24" max="80" value="40"><output id="font-out">40px</output></div>
+      <select id="theme" class="hide-md" aria-label="Theme">
+        <option value="blue">Blue</option>
+        <option value="black">Black</option>
+        <option value="contrast">High contrast</option>
+      </select>
+      <button class="icon-btn" id="speaker" title="Voice guide"><svg class="ico"><use href="#i-speaker"/></svg></button>
+      <button class="icon-btn hide-sm" id="mirror" title="Mirror text"><svg class="ico"><use href="#i-mirror"/></svg></button>
+    </div>
+  </header>
+
+  <main class="stage-wrap">
+    <section class="stage" id="stage">
+      <div class="guide" aria-hidden="true"></div>
+      <div class="countdown-overlay hidden" id="overlay"></div>
+      <div class="scroller" id="scroller"><article class="script" id="script"></article></div>
+    </section>
+  </main>
+
+  <footer class="statusbar">
+    <span>Progress<b id="stat-progress">0%</b></span>
+    <span>WPM<b id="stat-wpm">0</b></span>
+    <span>Words<b id="stat-words">0</b></span>
+    <span class="hide-sm">Est. total<b id="stat-total">–</b></span>
+  </footer>
+  <div class="progress" id="progress"></div>
+</div>
+
+<!-- =========================== MODALS =========================== -->
+<div class="modal hidden" id="editor">
+  <div class="modal-box">
+    <div class="modal-head"><h3>Edit script</h3><button class="icon-btn" data-close><svg class="ico"><use href="#i-close"/></svg></button></div>
+    <label class="field"><span>Title</span><input id="edit-title"></label>
+    <label class="field"><span>Script</span><textarea id="edit-body"></textarea></label>
+    <div class="modal-foot"><button class="btn" data-close>Cancel</button><button class="btn btn-accent" id="save-script">Save script</button></div>
+  </div>
+</div>
+
+<div class="modal hidden" id="shortcuts">
+  <div class="modal-box" style="max-width:420px">
+    <div class="modal-head"><h3>Keyboard shortcuts</h3><button class="icon-btn" data-close><svg class="ico"><use href="#i-close"/></svg></button></div>
+    <div class="shortcut-list">
+      <span>Start / pause</span><kbd>Space</kbd>
+      <span>Restart</span><kbd>R</kbd>
+      <span>Scroll up / down</span><kbd>↑ ↓</kbd>
+      <span>Speed down / up</span><kbd>← →</kbd>
+      <span>Set / jump to bookmark</span><kbd>M</kbd>
+      <span>Edit script</span><kbd>E</kbd>
+      <span>Script library</span><kbd>B</kbd>
+      <span>Back to home</span><kbd>Esc</kbd>
+      <span>This panel</span><kbd>?</kbd>
+    </div>
+  </div>
+</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const root = document.documentElement;
+
+  /* ---------- Templates ---------- */
+  const templates = [
+    { id: "pitch", name: "Investor Pitch Deck", cat: "Business", icon: "i-rocket", c: "rgba(34,211,238,.12)", ci: "#22d3ee",
+      body: `Good morning, everyone. Thank you for being here.
+
+Most assessment tools treat every question as equal. But an easy question and an expert-level question shouldn't carry the same weight when we measure someone's ability.
+
+Our system looks at how difficult each question is, whether the learner got it right, and even the chance they guessed. That tells us their real ability, not just a raw percentage.
+
+The second idea is subject-as-data. We don't build a separate engine for every subject. The engine stays the same, and each new subject is simply content we feed into it.
+
+That is how we scale across subjects, institutions and learners without rebuilding the core.
+
+Thank you. I'd be glad to take your questions.` },
+    { id: "keynote", name: "Inspiring Keynote", cat: "Keynote", icon: "i-mic", c: "rgba(167,139,250,.12)", ci: "#a78bfa",
+      body: `Thank you. It's an honour to stand in front of a room full of people who build things.
+
+Ten years ago, the tools we use every day didn't exist. Someone had to imagine them first, and then someone had to do the unglamorous work of making them real.
+
+Today I want to talk about that second part — the patience, the failed attempts, and the small daily choices that turn an idea into something people rely on.
+
+Because the future isn't something that happens to us. It's something we build, one careful decision at a time.` },
+    { id: "youtube", name: "High-Engagement YouTube Script", cat: "Content creation", icon: "i-video", c: "rgba(248,113,113,.12)", ci: "#f87171",
+      body: `Stop scrolling for sixty seconds — this one tip will change how you study.
+
+Most people re-read their notes and feel productive. But re-reading is the least effective way to remember anything.
+
+Instead, close the book and try to explain the idea out loud, from memory. Where you get stuck is exactly what you need to review.
+
+Try it tonight with one topic. If it helps, hit subscribe — next week I'll show you how to turn this into a daily ten-minute habit.` },
+    { id: "celebration", name: "Heartfelt Celebration", cat: "Personal", icon: "i-heart", c: "rgba(251,191,36,.12)", ci: "#fbbf24",
+      body: `If I could have everyone raise a glass for just a moment.
+
+I've known these two for a long time, and I've watched them become better people together than either of them was alone.
+
+They laugh at the same terrible jokes, they show up for each other on the hard days, and they make everyone around them feel at home.
+
+So here's to a lifetime of more of the same. Cheers!` }
+  ];
+
+  let current = { ...templates[0] };
+  const TARGET_WPM = 130;
+  const countWords = t => (t.trim().match(/\S+/g) || []).length;
+  const fmt = s => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
+
+  function renderTemplates() {
+    $("templates").innerHTML = templates.map(t => `
+      <button class="tpl ${t.id === current.id ? "active" : ""}" data-tpl="${t.id}">
+        <div class="tpl-icon" style="--c:${t.c};--ci:${t.ci}"><svg><use href="#${t.icon}"/></svg></div>
+        <div class="tpl-text"><strong>${t.name}</strong><span>${t.cat}</span></div>
+      </button>`).join("");
+  }
+
+  function loadScript(s) {
+    current = { ...s };
+    const w = countWords(s.body);
+    $("home-title").textContent = s.name;
+    $("home-words").textContent = w;
+    $("home-time").textContent = fmt((w / TARGET_WPM) * 60);
+    $("home-wpm").textContent = TARGET_WPM;
+    $("bar-title").textContent = s.name;
+    $("script").textContent = s.body;
+    $("stat-words").textContent = w;
+    renderTemplates();
+  }
+
+  $("templates").addEventListener("click", e => {
+    const b = e.target.closest("[data-tpl]");
+    if (b) loadScript(templates.find(t => t.id === b.dataset.tpl));
+  });
+
+  /* ---------- Views ---------- */
+  const inPrompter = () => !$("view-prompter").classList.contains("hidden");
+  function showPrompter(countdown) {
+    $("view-home").classList.add("hidden");
+    $("view-prompter").classList.remove("hidden");
+    resetRun();
+    countdown ? runCountdown(countdown) : toggle(true);
+  }
+  function showHome() {
+    toggle(false); speechSynthesis.cancel();
+    $("view-prompter").classList.add("hidden");
+    $("view-home").classList.remove("hidden");
+  }
+  $("start").onclick = () => showPrompter(0);
+  $("go-home").onclick = showHome;
+
+  /* ---------- Scrolling engine ---------- */
+  const scroller = $("scroller");
+  let playing = false, last = 0, elapsed = 0, carry = 0, bookmark = null, cdTimer = null;
+
+  function updateStats() {
+    const max = scroller.scrollHeight - scroller.clientHeight;
+    const p = max > 0 ? scroller.scrollTop / max : 0;
+    const w = countWords(current.body);
+    $("stat-progress").textContent = (p * 100).toFixed(1) + "%";
+    $("progress").style.width = p * 100 + "%";
+    $("stat-wpm").textContent = elapsed > 1 ? Math.round((p * w) / (elapsed / 60)) : 0;
+    $("stat-total").textContent = p > 0.02 ? fmt(elapsed / p) : "–";
+    $("timer").textContent = fmt(elapsed);
+  }
+  function tick(t) {
+    if (!playing) return;
+    const dt = (t - last) / 1000; last = t;
+    elapsed += dt;
+    carry += +$("speed").value * 4 * dt;
+    const step = Math.floor(carry); carry -= step;
+    scroller.scrollTop += step;
+    updateStats();
+    if (scroller.scrollTop >= scroller.scrollHeight - scroller.clientHeight - 1) return toggle(false);
+    requestAnimationFrame(tick);
+  }
+  function toggle(force) {
+    playing = typeof force === "boolean" ? force : !playing;
+    $("play-use").setAttribute("href", playing ? "#i-pause" : "#i-play");
+    if (playing) { last = performance.now(); requestAnimationFrame(tick); }
+  }
+  function resetRun() { toggle(false); scroller.scrollTop = 0; elapsed = 0; carry = 0; updateStats(); }
+
+  function runCountdown(n) {
+    clearInterval(cdTimer); toggle(false);
+    const o = $("overlay"); o.classList.remove("hidden"); o.textContent = n;
+    cdTimer = setInterval(() => {
+      if (--n <= 0) { clearInterval(cdTimer); o.classList.add("hidden"); toggle(true); }
+      else o.textContent = n;
+    }, 1000);
+  }
+  document.querySelectorAll("[data-countdown]").forEach(b =>
+    b.onclick = () => inPrompter() ? runCountdown(+b.dataset.countdown) : showPrompter(+b.dataset.countdown));
+
+  $("play").onclick = () => toggle();
+  $("restart").onclick = resetRun;
+  $("bookmark").onclick = () => {
+    if (bookmark === null || Math.abs(scroller.scrollTop - bookmark) < 5) { bookmark = scroller.scrollTop; $("bookmark").classList.add("active"); }
+    else scroller.scrollTop = bookmark;
+  };
+  scroller.addEventListener("scroll", updateStats);
+
+  /* ---------- Display controls ---------- */
+  $("speed").oninput = e => $("speed-out").textContent = e.target.value;
+  $("font").oninput = e => { root.style.setProperty("--font-size", e.target.value + "px"); $("font-out").textContent = e.target.value + "px"; };
+  $("mirror").onclick = e => { $("stage").classList.toggle("mirror"); e.currentTarget.classList.toggle("active"); };
+
+  const themes = {
+    blue:     { "--stage-bg": "#0b1226", "--stage-edge": "#1a2544", "--read-text": "#f4f7fc" },
+    black:    { "--stage-bg": "#000000", "--stage-edge": "#1a1a1a", "--read-text": "#ffffff" },
+    contrast: { "--stage-bg": "#000000", "--stage-edge": "#facc15", "--read-text": "#facc15" }
+  };
+  function applyTheme(name) {
+    Object.entries(themes[name]).forEach(([k, v]) => root.style.setProperty(k, v));
+    $("theme").value = name;
+    $("contrast-label").textContent = "High contrast: " + (name === "contrast" ? "on" : "off");
+  }
+  $("theme").onchange = e => applyTheme(e.target.value);
+  $("toggle-contrast").onclick = () => applyTheme($("theme").value === "contrast" ? "blue" : "contrast");
+
+  /* ---------- Voice guide ---------- */
+  let loud = false;
+  function setVoice(on) {
+    $("voice-toggle").checked = on;
+    $("voice-state").textContent = on ? "On" : "Off";
+    $("speaker").classList.toggle("active", on);
+    if (!on) speechSynthesis.cancel();
+  }
+  $("voice-toggle").onchange = e => setVoice(e.target.checked);
+  $("speaker").onclick = () => {
+    const on = !$("voice-toggle").checked; setVoice(on);
+    if (on) speak(current.body);
+  };
+  $("loud-mode").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    loud = b.dataset.mode === "loud";
+    document.querySelectorAll("#loud-mode button").forEach(x => x.classList.toggle("on", x === b));
+  });
+  function speak(text) {
+    if (!("speechSynthesis" in window)) return alert("Speech isn't supported in this browser.");
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = loud ? 0.9 : 1; u.volume = 1; u.pitch = loud ? 1.05 : 1;
+    speechSynthesis.speak(u);
+  }
+  $("test-speaker").onclick = () => speak("Testing, one, two. This is how your voice guide will sound.");
+
+  /* ---------- Modals ---------- */
+  const openModal = id => $(id).classList.remove("hidden");
+  const closeModals = () => document.querySelectorAll(".modal").forEach(m => m.classList.add("hidden"));
+  document.querySelectorAll("[data-close]").forEach(b => b.onclick = closeModals);
+  document.querySelectorAll(".modal").forEach(m => m.onclick = e => { if (e.target === m) closeModals(); });
+
+  function openEditor() {
+    toggle(false);
+    $("edit-title").value = current.name; $("edit-body").value = current.body;
+    openModal("editor"); $("edit-body").focus();
+  }
+  $("open-editor").onclick = openEditor;
+  $("title-edit").onclick = openEditor;
+  $("save-script").onclick = () => {
+    loadScript({ id: "custom", name: $("edit-title").value.trim() || "Untitled script", body: $("edit-body").value });
+    closeModals(); if (inPrompter()) resetRun();
+  };
+  $("open-library").onclick = () => $("templates").scrollIntoView({ behavior: "smooth", block: "center" });
+  $("open-shortcuts").onclick = () => openModal("shortcuts");
+  $("open-shortcuts-2").onclick = () => openModal("shortcuts");
+
+  /* ---------- Keyboard ---------- */
+  document.addEventListener("keydown", e => {
+    if (e.target.matches("input, textarea")) { if (e.key === "Escape") closeModals(); return; }
+    const modalOpen = [...document.querySelectorAll(".modal")].some(m => !m.classList.contains("hidden"));
+    if (e.key === "Escape") return modalOpen ? closeModals() : inPrompter() && showHome();
+    if (modalOpen) return;
+    const k = e.key.toLowerCase();
+    if (e.code === "Space") { e.preventDefault(); inPrompter() ? toggle() : showPrompter(0); }
+    else if (k === "e") { e.preventDefault(); openEditor(); }
+    else if (k === "b" && !inPrompter()) $("open-library").click();
+    else if (k === "?" || k === "h") openModal("shortcuts");
+    else if (inPrompter()) {
+      if (k === "r") resetRun();
+      else if (k === "m") $("bookmark").click();
+      else if (e.key === "ArrowUp") { e.preventDefault(); scroller.scrollTop -= 60; }
+      else if (e.key === "ArrowDown") { e.preventDefault(); scroller.scrollTop += 60; }
+      else if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        const s = $("speed"); s.value = +s.value + (e.key === "ArrowRight" ? 2 : -2); s.oninput({ target: s });
+      }
+    }
+  });
+
+  loadScript(templates[0]);
+</script>
+</body>
+</html>
